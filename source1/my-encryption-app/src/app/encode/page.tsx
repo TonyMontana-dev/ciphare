@@ -14,6 +14,17 @@ export default function Encode() {
   const [loading, setLoading] = useState(false);  // Initialize loading as false
   const [error, setError] = useState<string | null>(null);  // Initialize error as null
 
+  // Helper function to convert ArrayBuffer to Base64 string
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  };
+
   // Handle file upload event and set the selected file
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,36 +45,36 @@ export default function Encode() {
     setLoading(true);
     setError(null);
     setShareLink(null);
-  
+
     try {
-      // Convert the file to a Base64 string
-      const fileData = await new Promise((resolve, reject) => {  // Convert the file to a Base64 string using FileReader API 
+      // Convert the file to a Base64 string using FileReader API
+      const fileData = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(btoa(String.fromCharCode(...new Uint8Array(reader.result as ArrayBuffer))));  // Convert the ArrayBuffer to a string and encode it in Base64
+        reader.onload = () => resolve(arrayBufferToBase64(reader.result as ArrayBuffer)); // Efficient Base64 conversion
         reader.onerror = reject;
-        reader.readAsArrayBuffer(file);  // Read the file as an ArrayBuffer
+        reader.readAsArrayBuffer(file); // Read the file as an ArrayBuffer
       });
-  
+
       // Send the Base64-encoded file data, along with name and type, to the backend
       const response = await fetch("http://localhost:5000/api/v1/encode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({  // Send the file data, name, type, password, reads, TTL, and algorithm to the backend
-          file_data: fileData,  // Base64-encoded data
-          file_name: file.name,  // Store the original file name
-          file_type: file.type,  // Store the original file type
-          password,  // Encryption password
-          reads,  // Number of reads
-          ttl: ttl * ttlMultiplier,  // Convert TTL to seconds
-          algorithm,  // Selected algorithm
+        body: JSON.stringify({
+          file_data: fileData, // Base64-encoded data
+          file_name: file.name, // Original file name
+          file_type: file.type, // Original file type
+          password, // Encryption password
+          reads, // Number of reads
+          ttl: ttl * ttlMultiplier, // Convert TTL to seconds
+          algorithm, // Selected algorithm
         }),
       });
-  
+
       if (!response.ok) throw new Error("Encryption failed. Please try again.");
-  
+
       const result = await response.json();
       const domain = "https://yourdomain.com"; // Adjust this to your deployment domain
-      setShareLink(`${domain}/decode/${result.file_id}`);  // Set the shareable link for decryption
+      setShareLink(`${domain}/decode/${result.file_id}`); // Set the shareable link for decryption
     } catch (e) {
       setError((e as Error).message);
     } finally {

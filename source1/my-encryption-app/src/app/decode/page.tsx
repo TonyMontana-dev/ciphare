@@ -4,12 +4,12 @@ import { Title } from "../components/title";
 import { ErrorMessage } from "../components/error";
 
 export default function Decode() {
-  const [fileID, setFileID] = useState("");  // Initialize fileID state as an empty string
-  const [password, setPassword] = useState("");  // Initialize password state as an empty string 
+  const [fileID, setFileID] = useState(""); // Initialize fileID state as an empty string
+  const [password, setPassword] = useState(""); // Initialize password state as an empty string
   const [algorithm, setAlgorithm] = useState("AES256"); // Default algorithm selection
-  const [decryptedFile, setDecryptedFile] = useState<{ data: string, name: string, type: string } | null>(null);  // Initialize decryptedFile as null 
-  const [loading, setLoading] = useState(false);  // Initialize loading state as false
-  const [error, setError] = useState<string | null>(null);  // Initialize error state as null
+  const [decryptedFile, setDecryptedFile] = useState<{ data: string; name: string; type: string } | null>(null); // Initialize decryptedFile as null
+  const [loading, setLoading] = useState(false); // Initialize loading state as false
+  const [error, setError] = useState<string | null>(null); // Initialize error state as null
 
   // Function to handle decryption of the file using the API endpoint
   const handleDecrypt = async () => {
@@ -24,7 +24,7 @@ export default function Decode() {
     setDecryptedFile(null);
 
     try {
-      const response = await fetch("http://localhost:5000/api/v1/decode", {  // Decrypt the file using the API endpoint
+      const response = await fetch("http://localhost:5000/api/v1/decode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -36,7 +36,12 @@ export default function Decode() {
 
       if (!response.ok) throw new Error("Decryption failed. Please check your file ID, password, and algorithm.");
 
-      const result = await response.json(); // Parse the response as JSON
+      const result = await response.json();
+
+      // Check if all necessary data is returned
+      if (!result.decrypted_data || !result.file_name || !result.file_type) {
+        throw new Error("Incomplete data received from the server.");
+      }
 
       // Set the decrypted file data, name, and type
       setDecryptedFile({
@@ -55,15 +60,15 @@ export default function Decode() {
   const handleDownload = () => {
     if (!decryptedFile) return;
 
-    const binaryData = Uint8Array.from(atob(decryptedFile.data), c => c.charCodeAt(0));  // Decode base64 data to a binary array buffer 
-    const blob = new Blob([binaryData], { type: decryptedFile.type });  // Create a Blob from the binary data
-    const url = URL.createObjectURL(blob);  // Create a URL for the Blob data
+    const binaryData = Uint8Array.from(atob(decryptedFile.data), (c) => c.charCodeAt(0)); // Decode base64 data to binary array buffer
+    const blob = new Blob([binaryData], { type: decryptedFile.type }); // Create a Blob from the binary data
+    const url = URL.createObjectURL(blob); // Create a URL for the Blob data
 
-    const link = document.createElement("a");  // Create a temporary link element for download 
-    link.href = url;  // Set the URL as the link's href
+    const link = document.createElement("a"); // Create a temporary link element for download
+    link.href = url; // Set the URL as the link's href
     link.download = decryptedFile.name; // Use original file name
-    link.click();  // Simulate a click on the link to trigger download
-    URL.revokeObjectURL(url);  // Revoke the URL object after download
+    link.click(); // Simulate a click on the link to trigger download
+    URL.revokeObjectURL(url); // Revoke the URL object after download
   };
 
   return (
