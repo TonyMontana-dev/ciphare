@@ -14,7 +14,7 @@ export default function Encode() {
   const [loading, setLoading] = useState(false);  // Initialize loading as false
   const [error, setError] = useState<string | null>(null);  // Initialize error as null
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:10000"; // Default to local server URL if not provided in environment variables
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"; // Default to local server URL if not provided in environment variables
 
   // Helper function to convert ArrayBuffer to Base64 string
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {

@@ -201,6 +201,11 @@ def decode_data():
 def root():
     return jsonify({"message": "Welcome to the Encryption API. Use /api/v1/encode or /api/v1/decode."}), 200
 
+# Health checker route
+@app.route("/api/healthchecker", methods=["GET"])
+def healthchecker():
+    return {"status": "success", "message": "Integrate Flask Framework with Next.js"}
+
 if __name__ == "__main__":
     # Run using the environment-provided PORT or default to 5000
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))

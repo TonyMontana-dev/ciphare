@@ -32,7 +32,7 @@ export default function Community() {
   const [error, setError] = useState<string | null>(null);
   const [visibleComments, setVisibleComments] = useState<Record<string, number>>({});
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:10000"; // Default to local server URL if not provided in environment variables
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"; // Default to local server URL if not provided in environment variables
 
   // Memoize fetchPosts to prevent redefinition on every render
   const fetchPosts = useCallback(async () => {
