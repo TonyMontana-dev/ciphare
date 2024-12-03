@@ -17,7 +17,7 @@ This file also contains helper functions to safely make requests to the Redis da
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import json
-from utils import generate_id
+from ....utils import generate_id
 from urllib.parse import urljoin, urlparse
 from dotenv import load_dotenv
 import os
