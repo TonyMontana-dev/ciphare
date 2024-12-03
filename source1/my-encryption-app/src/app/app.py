@@ -196,7 +196,11 @@ def decode_data():
         print(f"Decode Error: {e}")
         return jsonify({"error": "An error occurred during decoding"}), 500
 
+# Root route to prevent 404 errors
+@app.route("/")
+def root():
+    return jsonify({"message": "Welcome to the Encryption API. Use /api/v1/encode or /api/v1/decode."}), 200
 
 if __name__ == "__main__":
-    #app.run(port=5000, debug=True)  # Disable debug model before deployment to production
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))) # Run on all interfaces with PORT environment variable or default to 5000
+    # Run using the environment-provided PORT or default to 5000
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

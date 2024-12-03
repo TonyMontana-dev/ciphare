@@ -11,7 +11,7 @@ export default function Decode() {
   const [loading, setLoading] = useState(false); // Initialize loading state as false
   const [error, setError] = useState<string | null>(null); // Initialize error state as null
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL; // Get API base URL from environment variables
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000"; // Default to local server URL if not provided in environment variables
 
   // Function to handle decryption of the file using the API endpoint
   const handleDecrypt = async () => {

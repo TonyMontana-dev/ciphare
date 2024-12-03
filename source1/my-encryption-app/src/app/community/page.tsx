@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Title } from "../components/title";
 import { ErrorMessage } from "../components/error";
 
@@ -32,25 +32,24 @@ export default function Community() {
   const [error, setError] = useState<string | null>(null);
   const [visibleComments, setVisibleComments] = useState<Record<string, number>>({});
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000"; // Default to local server URL if not provided in environment variables
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  // Fetch all posts from the server
-  const fetchPosts = async () => {
+  // Memoize fetchPosts to prevent redefinition on every render
+  const fetchPosts = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/posts`);
       if (!response.ok) throw new Error("Failed to fetch posts.");
       const result = await response.json();
       setPosts(result);
-    } catch (error) {
+    } catch {
       setError("Failed to load posts.");
     }
-  };
+  }, [API_BASE_URL]);
 
-  // Create a new post
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]); // Ensure useEffect runs only when fetchPosts changes
+
   const handleCreatePost = async () => {
     if (ttl < 1 || ttl > 90) {
       setError("TTL must be between 1 and 90 days.");
@@ -69,33 +68,26 @@ export default function Community() {
         setTitle("");
         setContent("");
         fetchPosts();
-      } else {
-        throw new Error("Failed to create post.");
       }
-    } catch (error) {
+    } catch {
       setError("Failed to create post.");
     }
   };
 
-  // Delete a post
   const handleDeletePost = async (postId: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete post.");
+      if (response.ok) {
+        setPosts((prevPosts) => prevPosts.filter((post) => post._id !== postId));
       }
-
-      fetchPosts();
-    } catch (err) {
+    } catch {
       setError("An error occurred while deleting the post.");
     }
   };
 
-  // Like a post
   const handleLikePost = async (postId: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}/like`, {
@@ -104,22 +96,19 @@ export default function Community() {
 
       if (response.ok) {
         fetchPosts();
-      } else {
-        throw new Error("Failed to like post.");
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred while liking the post.");
     }
   };
 
-  // Add a comment to a post
   const handleAddComment = async (postId: string, commentContent: string) => {
     if (!commentContent) {
       setError("Comment content is required.");
       return;
     }
     setError(null);
-  
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}/comment`, {
         method: "POST",
@@ -130,22 +119,18 @@ export default function Community() {
           ttl: ttl * 24 * 60 * 60,
         }),
       });
-  
+
       if (response.ok) {
-        const updatedPost = await response.json(); // Get the updated post data
+        const updatedPost = await response.json();
         setPosts((prevPosts) =>
           prevPosts.map((post) => (post._id === postId ? updatedPost : post))
-        ); // Update the specific post in state
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to add comment.");
+        );
       }
     } catch {
       setError("An unexpected error occurred.");
     }
-  };  
+  };
 
-  // Delete a comment
   const handleDeleteComment = async (postId: string, commentIndex: number) => {
     try {
       const response = await fetch(
@@ -155,15 +140,12 @@ export default function Community() {
 
       if (response.ok) {
         fetchPosts();
-      } else {
-        throw new Error("Failed to delete comment.");
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred while deleting the comment.");
     }
   };
 
-  // Load more comments
   const handleLoadMoreComments = (postId: string) => {
     setVisibleComments((prev) => ({
       ...prev,
@@ -177,7 +159,6 @@ export default function Community() {
       <div className="max-w-3xl mx-auto">
         <Title>Community Posts</Title>
         <div className="mt-8">
-          {/* Input fields for new post */}
           <input
             type="text"
             placeholder="Post Title"
@@ -210,7 +191,6 @@ export default function Community() {
           </button>
         </div>
 
-        {/* Render posts */}
         <div className="mt-8">
           {posts.map((post) => (
             <div key={post._id} className="bg-zinc-800 p-4 mb-4 rounded">
@@ -234,7 +214,6 @@ export default function Community() {
                 Delete Post
               </button>
 
-              {/* Comments Section */}
               <div className="mt-4">
                 <h4 className="text-sm font-bold">Comments</h4>
                 {post.comments.length > 0 ? (
@@ -254,26 +233,20 @@ export default function Community() {
                     {visibleComments[post._id] < post.comments.length && (
                       <button
                         onClick={() => handleLoadMoreComments(post._id)}
-                        className="text-blue-500 text-xs mt-2"
+                        className="text-blue-500 mt-2" // Show "Load More" button
                       >
-                        Load More Comments
+                        Load More Comments ({post.comments.length - (visibleComments[post._id] || 2)}) {/* Show remaining comments */}
                       </button>
                     )}
                   </>
                 ) : (
                   <p className="text-xs text-zinc-400">No comments yet.</p>
                 )}
-                {/* Add comment */}
                 <input
                   type="text"
                   placeholder="Add a comment"
                   className="w-full p-2 mt-2 bg-zinc-900 border border-zinc-700 rounded text-zinc-300"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddComment(post._id, (e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).value = "";
-                    }
-                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddComment(post._id, e.currentTarget.value)}
                 />
               </div>
             </div>
