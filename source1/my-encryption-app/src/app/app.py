@@ -17,7 +17,7 @@ import base64
 import os
 import requests
 from dotenv import load_dotenv
-from utils import generate_id, generate_salt
+from .utils import generate_id, generate_salt
 from typing import Tuple
 from pages.api.v1.posts import posts_bp
 
@@ -41,7 +41,7 @@ headers = {"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"}
 
 # Constants for encryption
 ENCRYPTION_KEY_LENGTH = 32  # For AES-256
-DOMAIN = os.getenv("DOMAIN", "http://localhost:5000")  # For generating shareable links
+DOMAIN = os.getenv("DOMAIN", "https://ciphare.vercel.app/")  # For generating shareable links
 
 # Derive encryption key using Scrypt
 def derive_key(password: str, salt: bytes) -> bytes:
