@@ -5,13 +5,7 @@
 
 import { redirect } from "next/navigation";
 
-interface Props {
-  params: {
-    compositeKey: string; // Match the folder `[compositeKey]`
-  };
-}
-
-export default function Page({ params }: Props) {
+export default async function Page({ params }: { params: { compositeKey: string } }) {
   const { compositeKey } = params;
   return redirect(`/decode#${compositeKey}`);
 }
