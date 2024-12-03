@@ -5,6 +5,13 @@
 
 import { redirect } from "next/navigation";
 
-export default function Page(props: Awaited<{ params: { fileId: string } }>) {
-  return redirect(`/decode#${props.params.fileId}`);
+interface Props {
+  params: {
+    compositeKey: string; // Match the folder `[compositeKey]`
+  };
+}
+
+export default function Page({ params }: Props) {
+  const { compositeKey } = params;
+  return redirect(`/decode#${compositeKey}`);
 }
