@@ -16,7 +16,7 @@ encryption and decryption processes to ensure that the keys and salts are of the
 import base64
 import os
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from constants import ID_LENGTH, ENCRYPTION_KEY_LENGTH
+from .constants import ID_LENGTH, ENCRYPTION_KEY_LENGTH
 
 def generate_id(length=ID_LENGTH):
     return base64.urlsafe_b64encode(os.urandom(length)).decode('utf-8').rstrip("=")
