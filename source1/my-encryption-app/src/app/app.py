@@ -19,7 +19,7 @@ import requests
 from dotenv import load_dotenv
 from .utils import generate_id, generate_salt
 from typing import Tuple
-from pages.api.v1.posts import posts_bp
+from .pages.api.v1.posts import posts_bp
 
 
 # Load environment variables
