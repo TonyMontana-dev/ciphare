@@ -5,7 +5,11 @@
 
 import { redirect } from "next/navigation";
 
-export default async function Page({ params }: { params: { compositeKey: string } }) {
-  const { compositeKey } = params;
+// Adjusting to Next.js's async expectations
+export default async function Page({ params }: { params: Promise<{ compositeKey: string }> }) {
+  const resolvedParams = await params; // Resolve the promise
+  const { compositeKey } = resolvedParams;
+
   return redirect(`/decode#${compositeKey}`);
 }
+
