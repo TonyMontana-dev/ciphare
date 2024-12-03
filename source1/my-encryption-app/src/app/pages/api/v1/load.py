@@ -9,7 +9,7 @@ The load_bp Blueprint is registered in the app.py file to define the route for t
 """
 
 from flask import Blueprint, request, jsonify
-from ....utils import decrypt_aes256
+from utils import decrypt_aes256
 import base64
 import os
 import redis

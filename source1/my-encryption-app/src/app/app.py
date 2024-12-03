@@ -17,9 +17,9 @@ import base64
 import os
 import requests
 from dotenv import load_dotenv
-from .utils import generate_id, generate_salt
+from utils import generate_id, generate_salt
 from typing import Tuple
-from .pages.api.v1.posts import posts_bp
+from pages.api.v1.posts import posts_bp
 
 
 # Load environment variables
@@ -208,4 +208,4 @@ def healthchecker():
 
 if __name__ == "__main__":
     # Run using the environment-provided PORT or default to 5000
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

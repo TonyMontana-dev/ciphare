@@ -9,7 +9,7 @@ The shareable link contains the file ID, TTL, reads, and the domain name.
 
 
 from flask import Blueprint, request, jsonify
-from ....utils import encrypt_aes256, generate_salt, generate_id
+from utils import encrypt_aes256, generate_salt, generate_id
 import base64
 import os
 import redis
