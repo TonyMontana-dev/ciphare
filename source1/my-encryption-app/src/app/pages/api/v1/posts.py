@@ -48,7 +48,7 @@ def safe_request(method, endpoint_path, headers=None, data=None):
     if data is not None:
         data = json.dumps(data)
 
-    # Make the request
+    # Make the request based on the HTTP method with the appropriate headers and data. Server-Side Request Forgery (SSRF): Unsanitized input from an HTTP parameter flows into requests.get() or requests.post() without proper validation.
     if method == "get":
         return requests.get(full_url, headers=headers)  # SSRF detected here
     elif method == "post":
@@ -144,51 +144,67 @@ def like_post(post_id):
 @posts_bp.route("/<post_id>/comment", methods=["POST"])
 def add_comment(post_id):
     try:
-        # Retrieve and sanitize input data
         data = request.json
-        content = data.get("content", "").strip()  # Get the content of the comment
-        author = data.get("author", "Anonymous").strip()  # Get the author of the comment
+        content = data.get("content", "").strip()
+        author = data.get("author", "Anonymous").strip()
+        ttl = data.get("ttl", 90 * 24 * 60 * 60)  # Default to 90 days in seconds
 
         if not content or not author:
             return jsonify({"error": "Author and content are required"}), 400
 
-        # Define the key for Redis
         key = f"post:{post_id}"
-
-        # Retrieve existing comments and ensure they are in list format
         response = safe_request("get", f"/hget/{key}/comments", headers=headers)
+
         if response.status_code != 200:
-            print(f"Failed to retrieve comments. Redis Error: {response.status_code}, {response.text}")
             return jsonify({"error": "Failed to retrieve comments"}), 500
 
-        # Parse the existing comments or default to an empty list
+        # Ensure comments are parsed as a list
         existing_comments = response.json().get("result", "[]")
-        comments = json.loads(existing_comments)
-        if not isinstance(comments, list):
-            print(f"Unexpected data type for comments: {type(comments)}")
-            comments = []  # Reset to empty list if not a list
+        try:
+            comments = json.loads(existing_comments)
+            if not isinstance(comments, list):
+                raise ValueError("Comments is not a list")
+        except Exception:
+            comments = []  # Reset to an empty list if parsing fails
+
+        # Generate a unique ID for the comment's author
+        author_id = generate_id()
 
         # Add the new comment
-        new_comment = {"content": content, "author": author, "timestamp": datetime.utcnow().isoformat()}
+        new_comment = {
+            "content": content,
+            "author": author,
+            "author_id": author_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "ttl": ttl,
+        }
         comments.append(new_comment)
 
-        # Store updated comments back in Redis
+        # Update comments in Redis
         response = safe_request(
-            "post",
-            f"/hset/{key}/comments",
-            headers=headers,
-            data={"comments": json.dumps(comments)}  # Serialize comments to JSON string for storage in Redis hash field
+            "post", f"/hset/{key}/comments", headers=headers, data={"comments": json.dumps(comments)}
         )
 
-        if response.status_code == 200:
-            return jsonify({"message": "Comment added successfully"}), 200
-        else:
-            print(f"Failed to add comment. Redis Error: {response.status_code}, {response.text}")
+        if response.status_code != 200:
             return jsonify({"error": "Failed to add comment"}), 500
 
+        # Fetch the updated post data
+        post_response = safe_request("get", f"/hgetall/{key}", headers=headers)
+        if post_response.status_code != 200:
+            return jsonify({"error": "Failed to retrieve updated post"}), 500
+
+        raw_post_data = post_response.json().get("result", [])
+        post_data = dict(zip(raw_post_data[::2], raw_post_data[1::2]))
+        post_data["_id"] = key.split(":")[1]
+        post_data["likes"] = int(post_data.get("likes", 0))
+        post_data["comments"] = json.loads(post_data.get("comments", "[]"))
+        post_data["created_at"] = post_data.get("created_at", "")
+
+        return jsonify(post_data), 200  # Return the updated post
+
     except Exception as e:
-        print(f"Error in adding comment: {e}")
-        return jsonify({"error": "An error occurred while adding the comment"}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 # Route to delete a post
 @posts_bp.route("/<post_id>", methods=["DELETE"])
