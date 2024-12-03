@@ -5,6 +5,6 @@
 
 import { redirect } from "next/navigation";
 
-export default function Page(props: { params: { fileId: string } }) {
+export default function Page(props: Awaited<{ params: { fileId: string } }>) {
   return redirect(`/decode#${props.params.fileId}`);
 }
