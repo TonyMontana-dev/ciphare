@@ -14,6 +14,8 @@ export default function Encode() {
   const [loading, setLoading] = useState(false);  // Initialize loading as false
   const [error, setError] = useState<string | null>(null);  // Initialize error as null
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL; // Get API base URL from environment variables
+
   // Helper function to convert ArrayBuffer to Base64 string
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     let binary = '';
@@ -56,7 +58,7 @@ export default function Encode() {
       });
 
       // Send the Base64-encoded file data, along with name and type, to the backend
-      const response = await fetch("http://localhost:5000/api/v1/encode", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/encode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

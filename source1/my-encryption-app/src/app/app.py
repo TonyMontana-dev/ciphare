@@ -200,4 +200,3 @@ def decode_data():
 if __name__ == "__main__":
     #app.run(port=5000, debug=True)  # Disable debug model before deployment to production
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))) # Run on all interfaces with PORT environment variable or default to 5000
-

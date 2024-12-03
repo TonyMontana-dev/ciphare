@@ -11,6 +11,8 @@ export default function Decode() {
   const [loading, setLoading] = useState(false); // Initialize loading state as false
   const [error, setError] = useState<string | null>(null); // Initialize error state as null
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL; // Get API base URL from environment variables
+
   // Function to handle decryption of the file using the API endpoint
   const handleDecrypt = async () => {
     if (!fileID || !password) {
@@ -24,7 +26,7 @@ export default function Decode() {
     setDecryptedFile(null);
 
     try {
-      const response = await fetch("http://localhost:5000/api/v1/decode", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/decode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

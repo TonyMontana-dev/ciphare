@@ -46,7 +46,7 @@ def store_data():
         redis_client.expire(key, ttl)  # Set the TTL for the key if greater than zero
 
     # Shareable link structure
-    domain = os.getenv("DOMAIN", "http://localhost:5000")
+    domain = os.getenv("DOMAIN", "http://localhost:5000") # For local testing
     share_link = f"{domain}/api/v1/decrypt/{file_id}"
 
     return jsonify({"file_id": file_id, "ttl": ttl, "reads": reads, "share_link": share_link}), 201

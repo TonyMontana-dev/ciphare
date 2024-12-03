@@ -32,6 +32,8 @@ export default function Community() {
   const [error, setError] = useState<string | null>(null);
   const [visibleComments, setVisibleComments] = useState<Record<string, number>>({});
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -39,7 +41,7 @@ export default function Community() {
   // Fetch all posts from the server
   const fetchPosts = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/v1/posts");
+      const response = await fetch(`${API_BASE_URL}/api/v1/posts`);
       if (!response.ok) throw new Error("Failed to fetch posts.");
       const result = await response.json();
       setPosts(result);
@@ -57,7 +59,7 @@ export default function Community() {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:5000/api/v1/posts", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content, author, ttl: ttl * 24 * 60 * 60 }),
@@ -78,7 +80,7 @@ export default function Community() {
   // Delete a post
   const handleDeletePost = async (postId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/v1/posts/${postId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}`, {
         method: "DELETE",
       });
 
@@ -96,7 +98,7 @@ export default function Community() {
   // Like a post
   const handleLikePost = async (postId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/v1/posts/${postId}/like`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}/like`, {
         method: "POST",
       });
 
@@ -119,7 +121,7 @@ export default function Community() {
     setError(null);
   
     try {
-      const response = await fetch(`http://localhost:5000/api/v1/posts/${postId}/comment`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,7 +149,7 @@ export default function Community() {
   const handleDeleteComment = async (postId: string, commentIndex: number) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/v1/posts/${postId}/comment/${commentIndex}`,
+        `${API_BASE_URL}/api/v1/posts/${postId}/comment/${commentIndex}`,
         { method: "DELETE" }
       );
 
