@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, Flask, request, jsonify
+from flask_cors import CORS
 from api.registry import EncryptionRegistry
 import base64
 import requests
@@ -11,6 +12,9 @@ decode_bp = Blueprint("decode", __name__, url_prefix="/api/decode")
 UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
 UPSTASH_REDIS_PASSWORD = os.getenv("UPSTASH_REDIS_PASSWORD")
 HEADERS = {"Authorization": f"Bearer {UPSTASH_REDIS_PASSWORD}"}
+
+app = Flask(__name__)  # Add this for Vercel
+CORS(app)  # Enable CORS for Vercel
 
 
 def is_valid_base64(s: str) -> bool:
@@ -100,74 +104,7 @@ def decode():
     except Exception as e:
         logging.error(f"Error during decoding: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
 
-
-
-# BACKUP CODE FOR REFERENCE
-"""
-# Retrieve and decrypt data
-@app.route("/api/decode", methods=["POST"])
-def decode_data():
-    try:
-        data = request.json
-        file_id = data.get("file_id")
-        password = data.get("password")
-
-        # Check for required parameters
-        if not file_id or not password:
-            return jsonify({"error": "File ID and password are required"}), 400
-
-        # Generate Redis key
-        key = f"cipher_share:{file_id}"
-        
-        # Retrieve all fields from Redis
-        response = requests.get(f"{UPSTASH_REDIS_URL}/hgetall/{key}", headers=headers)  # SSRF detected here
-        print(f"Raw Redis response for key {key}: {response.json()}")
-
-        if response.status_code != 200:
-            return jsonify({"error": "File not found or expired"}), 404
-
-        # Convert flat list to dictionary
-        raw_result = response.json().get("result", [])
-        result = dict(zip(raw_result[::2], raw_result[1::2]))  # Convert alternating list to a dictionary
-
-        try:
-            encrypted_data = base64.urlsafe_b64decode(result["encrypted_data"])
-            iv = base64.urlsafe_b64decode(result["iv"])
-            tag = base64.urlsafe_b64decode(result["tag"])
-            salt = base64.urlsafe_b64decode(result["salt"])
-            remaining_reads = int(result["reads"])
-            file_name = result["file_name"]
-            file_type = result["file_type"]
-        except KeyError as e:
-            print(f"Missing data in Redis response: {e}")
-            return jsonify({"error": "Missing encrypted data, possibly expired"}), 404
-
-        # Update reads or delete if exhausted
-        if remaining_reads > 1:
-            requests.post(f"{UPSTASH_REDIS_URL}/hincrby/{key}/reads/-1", headers=headers)  # SSRF detected here
-        elif remaining_reads == 1:
-            requests.post(f"{UPSTASH_REDIS_URL}/del/{key}", headers=headers)  # SSRF detected here
-
-        # Decrypt the data
-        try:
-            decrypted_data = decrypt_aes256(encrypted_data, password, salt, iv, tag)
-        except Exception as e:
-            print(f"Decryption error: {e}")
-            return jsonify({"error": "Decryption failed. Incorrect password or data corrupted."}), 400
-
-        # Encode decrypted data as Base64 for transfer
-        decrypted_base64 = base64.b64encode(decrypted_data).decode()
-
-        # Return decrypted data, file name, file type, and updated remaining reads
-        return jsonify({
-            "decrypted_data": decrypted_base64,
-            "file_name": file_name,
-            "file_type": file_type,
-            "remaining_reads": max(remaining_reads - 1, 0)
-        })
-
-    except Exception as e:
-        print(f"Decode Error: {e}")
-        return jsonify({"error": "An error occurred during decoding"}), 500
-"""
+# Define a handler for Vercel
+handler = app

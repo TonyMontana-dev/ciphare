@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, Flask, request, jsonify
+from flask_cors import CORS
 from api.registry import EncryptionRegistry
 from api.utils import generate_id
 import base64
@@ -12,6 +13,9 @@ encode_bp = Blueprint("encode", __name__, url_prefix="/api/encode/")
 UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
 UPSTASH_REDIS_PASSWORD = os.getenv("UPSTASH_REDIS_PASSWORD")
 HEADERS = {"Authorization": f"Bearer {UPSTASH_REDIS_PASSWORD}"}
+
+app = Flask(__name__)  # Add this for Vercel
+CORS(app)  # Enable CORS for Vercel
 
 
 @encode_bp.route("", methods=["POST"])
@@ -66,72 +70,7 @@ def encode():
     except Exception as e:
         logging.error(f"Error during encoding: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
 
-
-
-# BACKUP CODE FOR REFERENCE
-"""
-# Store and encrypt data
-@app.route("/api/encode", methods=["POST"])
-def encode_data():
-    try:
-        data = request.json  
-        password = data.get("password")  # Password for encryption
-        file_data = data.get("file_data")  # Base64 encoded file data
-        file_name = data.get("file_name")  # Original file name
-        file_type = data.get("file_type")  # Original MIME type
-        reads = int(data.get("reads", 1))  # Default to 1 read
-        ttl = int(data.get("ttl", 86400))  # Default to 1 day
-        
-        if not password or not file_data or not file_name or not file_type:
-            return jsonify({"error": "Password, file data, file name, and file type are required"}), 400
-
-        file_data_bytes = base64.b64decode(file_data)  # Decode Base64 data
-        salt = generate_salt()  # Generate random salt for encryption
-        encrypted_data, iv, tag = encrypt_aes256(file_data_bytes, password, salt)  # Encrypt the data
-        file_id = generate_id()  # Generate unique file ID
-        key = f"cipher_share:{file_id}"  # Redis key for storing the encrypted data
-
-        # Encoded payload for Redis storage and shareable link generation
-        encoded_data = {
-            "encrypted_data": base64.urlsafe_b64encode(encrypted_data).decode(),
-            "iv": base64.urlsafe_b64encode(iv).decode(),
-            "tag": base64.urlsafe_b64encode(tag).decode(),
-            "salt": base64.urlsafe_b64encode(salt).decode(),
-            "reads": reads,
-            "file_name": file_name,
-            "file_type": file_type
-        }
-
-        # Pipeline commands as list of lists for Redis storage and expiration with TTL in seconds
-        redis_pipeline = [
-            ["hset", key, "encrypted_data", encoded_data["encrypted_data"]],
-            ["hset", key, "iv", encoded_data["iv"]],
-            ["hset", key, "tag", encoded_data["tag"]],
-            ["hset", key, "salt", encoded_data["salt"]],
-            ["hset", key, "reads", encoded_data["reads"]],
-            ["hset", key, "file_name", file_name],
-            ["hset", key, "file_type", file_type],
-            ["expire", key, ttl]
-        ]
-
-        # Send pipeline request to Upstash Redis for atomicity and expiration of data with TTL
-        redis_response = requests.post(
-            f"{UPSTASH_REDIS_URL}/pipeline",
-            headers=headers,
-            json=redis_pipeline
-        )
-
-        if redis_response.status_code != 200:
-            print(f"Redis Error: {redis_response.status_code}, {redis_response.text}")
-            return jsonify({"error": "Failed to store encrypted data in Redis"}), 500
-
-        # Generate shareable link
-        share_link = f"{DOMAIN}/decode/{file_id}"
-
-        return jsonify({"file_id": file_id, "ttl": ttl, "reads": reads, "share_link": share_link}), 201
-
-    except Exception as e:
-        print(f"Encode Error: {e}")
-        return jsonify({"error": "An error occurred during encoding"}), 500
-"""
+# Define a handler for Vercel
+handler = app

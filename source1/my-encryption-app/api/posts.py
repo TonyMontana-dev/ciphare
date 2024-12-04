@@ -14,9 +14,11 @@ This file also contains helper functions to safely make requests to the Redis da
 """
 
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, Flask, request, jsonify
 from datetime import datetime
 import json
+
+from flask_cors import CORS
 from api.utils import generate_id
 from urllib.parse import urljoin, urlparse
 from dotenv import load_dotenv
@@ -31,7 +33,10 @@ load_dotenv()
 # Retrieve UPSTASH_REDIS_URL
 UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")  
 UPSTASH_REDIS_TOKEN = os.getenv("UPSTASH_REDIS_PASSWORD")  
-headers = {"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"}  
+headers = {"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"}
+
+app = Flask(__name__)  # Add this for Vercel
+CORS(app)  # Enable CORS for Vercel
 
 
 # Safe request helper function to avoid SSRF vulnerabilities
@@ -256,3 +261,7 @@ def delete_comment(post_id, comment_index):
     except Exception as e:
         print(f"Error in deleting comment: {e}")
         return jsonify({"error": "An error occurred while deleting the comment"}), 500
+
+
+# Define a handler for Vercel
+handler = app

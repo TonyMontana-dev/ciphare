@@ -3,8 +3,8 @@
   "version": "0.2.5",
   "private": true,
   "scripts": {
-    "flask-dev": "cross-env FLASK_DEBUG=1 pip install -r requirements.txt && python -m flask --app api.app run -p 8000 --reload",
-    "flask-prod": "pip install -r requirements.txt && gunicorn --bind 0.0.0.0:8000 app:app",
+    "flask-dev": "cross-env FLASK_DEBUG=1 pip install -r requirements.txt && python -m flask --app api.app run -p 5328 --reload",
+    "flask-prod": "pip install -r requirements.txt && gunicorn --bind 0.0.0.0:5328 app:app",
     "next-prod": "next start",
     "next-dev": "next dev",
     "build": "next build",
