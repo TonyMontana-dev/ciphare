@@ -9,7 +9,8 @@ The shareable link contains the file ID, TTL, reads, and the domain name.
 
 
 from flask import Blueprint, request, jsonify
-from utils import encrypt_aes256, generate_salt, generate_id
+from api.utils import generate_salt, generate_id
+from api.app import encrypt_aes256
 import base64
 import os
 import redis
@@ -20,7 +21,7 @@ redis_client = redis.from_url(os.getenv("UPSTASH_REDIS_URL"), password=os.getenv
 store_bp = Blueprint("store", __name__)
 
 # Define the route for storing the encrypted data in the Redis cache
-@store_bp.route("/api/v1/store", methods=["POST"])
+@store_bp.route("/api/store", methods=["POST"])
 def store_data():
     data = request.json # Get the JSON payload from the request
     password = data["password"] # Extract the password from the JSON payload
@@ -46,7 +47,7 @@ def store_data():
         redis_client.expire(key, ttl)  # Set the TTL for the key if greater than zero
 
     # Shareable link structure
-    domain = os.getenv("DOMAIN", "http://localhost:5000") # For local testing
-    share_link = f"{domain}/api/v1/decrypt/{file_id}"
+    domain = os.getenv("DOMAIN", "https://ciphare.vercel.app/") # For local testing
+    share_link = f"{domain}/api/decrypt/{file_id}"
 
     return jsonify({"file_id": file_id, "ttl": ttl, "reads": reads, "share_link": share_link}), 201

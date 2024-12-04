@@ -9,7 +9,7 @@ The load_bp Blueprint is registered in the app.py file to define the route for t
 """
 
 from flask import Blueprint, request, jsonify
-from utils import decrypt_aes256
+from api.utils import decrypt_aes256
 import base64
 import os
 import redis
@@ -20,7 +20,7 @@ redis_client = redis.from_url(os.getenv("UPSTASH_REDIS_URL"), password=os.getenv
 load_bp = Blueprint("load", __name__)
 
 # Define the route for loading the encrypted data from the Redis cache and decrypting it 
-@load_bp.route("/api/v1/load", methods=["POST"])
+@load_bp.route("/api/load", methods=["POST"])
 def load_data():
     data = request.json  # Get the JSON payload from the request
     file_id = data["file_id"]  # Extract the file_id and password from the payload

@@ -37,7 +37,7 @@ export default function Community() {
   // Memoize fetchPosts to prevent redefinition on every render
   const fetchPosts = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/posts`);
+      const response = await fetch(`${API_BASE_URL}/api/posts`);
       if (!response.ok) throw new Error("Failed to fetch posts.");
       const result = await response.json();
       setPosts(result);
@@ -58,7 +58,7 @@ export default function Community() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/posts`, {
+      const response = await fetch(`${API_BASE_URL}/api/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content, author, ttl: ttl * 24 * 60 * 60 }),
@@ -76,7 +76,7 @@ export default function Community() {
 
   const handleDeletePost = async (postId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
         method: "DELETE",
       });
 
@@ -90,7 +90,7 @@ export default function Community() {
 
   const handleLikePost = async (postId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}/like`, {
+      const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
         method: "POST",
       });
 
@@ -110,7 +110,7 @@ export default function Community() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/posts/${postId}/comment`, {
+      const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -134,7 +134,7 @@ export default function Community() {
   const handleDeleteComment = async (postId: string, commentIndex: number) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/v1/posts/${postId}/comment/${commentIndex}`,
+        `${API_BASE_URL}/api/posts/${postId}/comment/${commentIndex}`,
         { method: "DELETE" }
       );
 

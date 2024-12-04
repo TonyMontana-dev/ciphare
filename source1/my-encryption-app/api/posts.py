@@ -1,12 +1,12 @@
 """
 This python file contains the API endpoints for posts. It allows users to create, retrieve, like, and comment on posts.
 The API endpoints are as follows:
-1. POST /api/v1/posts - Create a new post
-2. GET /api/v1/posts - Retrieve all posts
-3. POST /api/v1/posts/<post_id>/like - Like a post
-4. POST /api/v1/posts/<post_id>/comment - Add a comment to a post
-5. DELETE /api/v1/posts/<post_id> - Delete a post
-6. DELETE /api/v1/posts/<post_id>/comment/<comment_index> - Delete a comment from a post
+1. POST /api/posts - Create a new post
+2. GET /api/posts - Retrieve all posts
+3. POST /api/posts/<post_id>/like - Like a post
+4. POST /api/posts/<post_id>/comment - Add a comment to a post
+5. DELETE /api/posts/<post_id> - Delete a post
+6. DELETE /api/posts/<post_id>/comment/<comment_index> - Delete a comment from a post
 
 The API endpoints interact with a Redis database to store and retrieve post data. The Redis database is hosted on Upstash. 
 This file also contains helper functions to safely make requests to the Redis database to avoid SSRF vulnerabilities. 
@@ -17,13 +17,13 @@ This file also contains helper functions to safely make requests to the Redis da
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import json
-from utils import generate_id
+from api.utils import generate_id
 from urllib.parse import urljoin, urlparse
 from dotenv import load_dotenv
 import os
 import requests
 
-posts_bp = Blueprint("posts", __name__, url_prefix="/api/v1/posts")  # Create a Blueprint for posts API
+posts_bp = Blueprint("posts", __name__, url_prefix="/api/posts")  # Create a Blueprint for posts API
 
 # Load environment variables from .env file
 load_dotenv() 

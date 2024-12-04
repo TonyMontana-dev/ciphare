@@ -18,7 +18,7 @@ export default function Encode() {
 
   // Helper function to convert ArrayBuffer to Base64 string
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-    let binary = '';
+    let binary = "";
     const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;
     for (let i = 0; i < len; i++) {
@@ -58,11 +58,21 @@ export default function Encode() {
       });
 
       // Send the Base64-encoded file data, along with name and type, to the backend
-      const response = await fetch(`${API_BASE_URL}/api/v1/encode`, {
+      console.log("Payload:", {
+        file_data: fileData,
+        file_name: file.name,
+        file_type: file.type,
+        password,
+        reads,
+        ttl: ttl * ttlMultiplier,
+        algorithm,
+      });
+
+      const response = await fetch(`${API_BASE_URL}/api/encode/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          file_data: fileData, // Base64-encoded data
+          file_data: fileData,
           file_name: file.name, // Original file name
           file_type: file.type, // Original file type
           password, // Encryption password
@@ -75,15 +85,15 @@ export default function Encode() {
       if (!response.ok) throw new Error("Encryption failed. Please try again.");
 
       const result = await response.json();
-      const domain = "https://yourdomain.com"; // Adjust this to your deployment domain
+      const domain = "https://ciphare.vercel.app"; // Adjust this to your deployment domain
       setShareLink(`${domain}/decode/${result.file_id}`); // Set the shareable link for decryption
     } catch (e) {
+      console.error("Error during encryption:", e);
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   };
-  
 
   return (
     <div className="container px-8 mx-auto mt-16 lg:mt-32">
