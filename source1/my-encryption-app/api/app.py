@@ -62,4 +62,4 @@ class handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     # Run Flask app locally
     port = int(os.environ.get("PORT", 5000))
-    run_simple("0.0.0.0", port, flask_app)
+    run_simple("127.0.0.1", port, flask_app)

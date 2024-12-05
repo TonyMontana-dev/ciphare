@@ -28,31 +28,33 @@ def encode():
         # Parse request data
         data = request.json
         logging.debug(f"Request received for encoding: {data}")
-        
+
         # Extract encryption details
         algorithm_name = data.get("algorithm", "AES256")
         password = data.get("password")
-        file_data = base64.b64decode(data.get("file_data"))
+        try:
+            file_data = base64.b64decode(data.get("file_data"))
+        except Exception as e:
+            logging.error(f"Invalid Base64 input: {e}")
+            return jsonify({"error": "Invalid Base64 file_data"}), 400
 
         # Validate algorithm
         algorithm = EncryptionRegistry.get(algorithm_name)
         if algorithm is None:
-            raise ValueError(f"Algorithm {algorithm_name} not found in registry.")
+            logging.error(f"Algorithm not found: {algorithm_name}")
+            return jsonify({"error": "Unsupported encryption algorithm"}), 400
 
         # Encrypt file data
         encrypted_data, metadata = algorithm.encrypt(file_data, password)
 
         # Add metadata for Redis
-        metadata["encrypted_data"] = base64.b64encode(encrypted_data).decode()
-        metadata["reads"] = int(data.get("reads", 1))
-        metadata["ttl"] = int(data.get("ttl", 86400))
-        metadata["file_name"] = data.get("file_name", "unknown")
-        metadata["file_type"] = data.get("file_type", "application/octet-stream")
-
-        # Ensure all metadata values are JSON serializable
-        for key, value in metadata.items():
-            if isinstance(value, bytes):
-                metadata[key] = base64.b64encode(value).decode()
+        metadata.update({
+            "encrypted_data": base64.b64encode(encrypted_data).decode(),
+            "reads": int(data.get("reads", 1)),
+            "ttl": int(data.get("ttl", 86400)),
+            "file_name": data.get("file_name", "unknown"),
+            "file_type": data.get("file_type", "application/octet-stream"),
+        })
 
         # Generate unique file ID and prepare Redis commands
         file_id = generate_id()
@@ -62,15 +64,13 @@ def encode():
 
         # Store encrypted data in Redis
         response = requests.post(f"{UPSTASH_REDIS_URL}/pipeline", headers=HEADERS, json=redis_pipeline)
-        logging.debug(f"Redis response: {response.text}")
-
-        # Handle Redis errors
+        logging.debug(f"Redis response: {response.status_code}, {response.text}")
         if response.status_code != 200:
             return jsonify({"error": "Failed to store encrypted data"}), 500
 
         # Generate and return shareable link
         domain = os.getenv("DOMAIN", "https://ciphare.vercel.app")
-        return jsonify({"file_id": file_id, "share_link": f"{domain}/decode/{file_id}"})
+        return jsonify({"file_id": file_id, "share_link": f"{domain}/decode/{file_id}"}), 201
     except Exception as e:
         logging.error(f"Error during encoding: {str(e)}")
         return jsonify({"error": str(e)}), 500

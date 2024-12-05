@@ -32,7 +32,7 @@ def add_padding(base64_string):
     """Ensure Base64 string has proper padding."""
     return base64_string + "=" * (-len(base64_string) % 4)
 
-@decode_bp.route("/", methods=["POST"])
+@decode_bp.route("", methods=["POST"])
 def decode():
     try:
         # Parse request data
