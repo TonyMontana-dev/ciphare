@@ -244,10 +244,11 @@ def delete_comment(post_id, comment_id):
 
     return jsonify({"message": "Comment deleted successfully", "comments": comments}), 200
 
-    
-# Define a handler for Vercel
+
+# A class to handle HTTP requests in a Vercel-compatible manner
 class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
+    # Handle all HTTP methods generically
+    def handle_request(self):
         env = {
             "REQUEST_METHOD": self.command,
             "PATH_INFO": self.path,
@@ -256,69 +257,47 @@ class handler(BaseHTTPRequestHandler):
             "CONTENT_TYPE": self.headers.get('Content-Type'),
         }
 
-    def do_GET(self):
-        env = {
-            "REQUEST_METHOD": self.command,
-            "PATH_INFO": self.path,
-            "SERVER_PROTOCOL": self.request_version,
-            "CONTENT_LENGTH": self.headers.get('Content-Length'),
-            "CONTENT_TYPE": self.headers.get('Content-Type'),
-        }
-
-    def do_DELETE(self):
-        env = {
-            "REQUEST_METHOD": self.command,
-            "PATH_INFO": self.path,
-            "SERVER_PROTOCOL": self.request_version,
-            "CONTENT_LENGTH": self.headers.get('Content-Length'),
-            "CONTENT_TYPE": self.headers.get('Content-Type'),
-        }
-
-    def do_PUT(self):
-        env = {
-            "REQUEST_METHOD": self.command,
-            "PATH_INFO": self.path,
-            "SERVER_PROTOCOL": self.request_version,
-            "CONTENT_LENGTH": self.headers.get('Content-Length'),
-            "CONTENT_TYPE": self.headers.get('Content-Type'),
-        }
-
-    def do_PATCH(self):
-        env = {
-            "REQUEST_METHOD": self.command,
-            "PATH_INFO": self.path,
-            "SERVER_PROTOCOL": self.request_version,
-            "CONTENT_LENGTH": self.headers.get('Content-Length'),
-            "CONTENT_TYPE": self.headers.get('Content-Type'),
-        }
-
-    def do_HEAD(self):
-        env = {
-            "REQUEST_METHOD": self.command,
-            "PATH_INFO": self.path,
-            "SERVER_PROTOCOL": self.request_version,
-            "CONTENT_LENGTH": self.headers.get('Content-Length'),
-            "CONTENT_TYPE": self.headers.get('Content-Type'),
-        }
-
-    def do_OPTIONS(self):
-        env = {
-            "REQUEST_METHOD": self.command,
-            "PATH_INFO": self.path,
-            "SERVER_PROTOCOL": self.request_version,
-            "CONTENT_LENGTH": self.headers.get('Content-Length'),
-            "CONTENT_TYPE": self.headers.get('Content-Type'),
-        }
+        # Read the request body
+        body = self.rfile.read(int(env["CONTENT_LENGTH"]) if env["CONTENT_LENGTH"] else 0)
         
-        body = self.rfile.read(int(env['CONTENT_LENGTH']) if env['CONTENT_LENGTH'] else 0)
+        # Create a Werkzeug request object
         req = Request.from_values(
             path=self.path,
             environ=env,
             input_stream=body,
         )
+
+        # Pass the request to Flask for handling
+        from app import app  # Import your Flask app instance here
         response = Response.force_type(app.full_dispatch_request(), req)
+
+        # Send the response back to the client
         self.send_response(response.status_code)
         for key, value in response.headers.items():
             self.send_header(key, value)
         self.end_headers()
         self.wfile.write(response.get_data())
+
+    # Override the HTTP methods to use the generic handler
+    def do_GET(self): self.handle_request()
+    def do_POST(self): self.handle_request()
+    def do_PUT(self): self.handle_request()
+    def do_PATCH(self): self.handle_request()
+    def do_DELETE(self): self.handle_request()
+    def do_OPTIONS(self): self.handle_request()
+
+    # Logging helpers
+    def log_message(self, format, *args):
+        logging.debug("%s - - [%s] %s\n" %
+                      (self.address_string(),
+                       self.log_date_time_string(),
+                       format % args))
+
+    def log_error(self, format, *args):
+        logging.error("%s - - [%s] %s\n" %
+                      (self.address_string(),
+                       self.log_date_time_string(),
+                       format % args))
+
+    def log_date_time_string(self):
+        return datetime.now().isoformat()
