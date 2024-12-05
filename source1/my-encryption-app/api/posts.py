@@ -61,7 +61,7 @@ def handle_posts():
         author = data.get("author", "Anonymous").strip()
         ttl = int(data.get("ttl", 90 * 24 * 60 * 60))  # Default to 90 days in seconds
 
-        post_id = generate_id()
+        post_id = generate_id() # Generate a unique post ID
         key = f"post:{post_id}"
         created_at = datetime.utcnow()
         post_data = {
@@ -72,7 +72,7 @@ def handle_posts():
             "likes": 0,
             "created_at": created_at.isoformat(),
             "comments": json.dumps([]),  # Initialize with empty comments
-        }
+        } # Post data to store in Redis
 
         # Redis pipeline for atomic operations
         redis_pipeline = [
@@ -86,20 +86,22 @@ def handle_posts():
             ["expire", key, ttl]
         ]
 
+        # Make a request to Redis to create the post
         response = safe_request("post", "/pipeline", headers=HEADERS, data=redis_pipeline)
-        if response.status_code == 200:
-            return jsonify({
-                "message": "Post created successfully",
-                "post_id": post_id,
-                "expires_in_days": ttl // (24 * 3600)
+        if response.status_code == 200: 
+            return jsonify({ 
+                "message": "Post created successfully", 
+                "post_id": post_id, 
+                "expires_in_days": ttl // (24 * 3600) 
             }), 201
-        return jsonify({"error": "Failed to create post"}), 500
-
-    elif request.method == "GET":
+        return jsonify({"error": "Failed to create post"}), 500 
+    
+    # Retrieve all posts if the request method is GET
+    elif request.method == "GET": 
         # Retrieve all posts
         response = safe_request("get", "/keys/post:*", headers=HEADERS)
         if response.status_code != 200:
-            return jsonify({"error": "Failed to retrieve posts"}), 500
+            return jsonify({"error": "Failed to retrieve posts"}), 500 
 
         keys = response.json().get("result", [])
         posts = []
@@ -237,7 +239,7 @@ def delete_comment(post_id, comment_id):
         f"/hset/{key}/comments",
         headers=HEADERS,
         data={"comments": json.dumps(comments)},
-    )
+    ) # Update the comments in Redis
 
     if response.status_code != 200:
         return jsonify({"error": "Failed to delete comment"}), 500
