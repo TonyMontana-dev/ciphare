@@ -1,4 +1,4 @@
-from flask import Blueprint, Flask, request, jsonify
+from flask import Flask, Blueprint, request, jsonify
 from flask_cors import CORS
 from api.registry import EncryptionRegistry
 from api.utils import generate_id
@@ -6,7 +6,11 @@ import base64
 import requests
 import os
 import logging
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from werkzeug.wrappers import Request, Response
+from http.server import BaseHTTPRequestHandler
 
+# Flask Blueprint for encoding
 encode_bp = Blueprint("encode", __name__, url_prefix="/api/encode/")
 
 # Load Redis configurations
@@ -14,9 +18,9 @@ UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
 UPSTASH_REDIS_PASSWORD = os.getenv("UPSTASH_REDIS_PASSWORD")
 HEADERS = {"Authorization": f"Bearer {UPSTASH_REDIS_PASSWORD}"}
 
-app = Flask(__name__)  # Add this for Vercel
-CORS(app)  # Enable CORS for Vercel
-
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS for the app
 
 @encode_bp.route("", methods=["POST"])
 def encode():
@@ -70,7 +74,26 @@ def encode():
     except Exception as e:
         logging.error(f"Error during encoding: {str(e)}")
         return jsonify({"error": str(e)}), 500
-    
 
-# Define a handler for Vercel
-handler = app
+# Define a BaseHTTPRequestHandler for Vercel compatibility
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+        body = self.rfile.read(int(env['CONTENT_LENGTH']) if env['CONTENT_LENGTH'] else 0)
+        req = Request.from_values(
+            path=self.path,
+            environ=env,
+            input_stream=body,
+        )
+        response = Response.force_type(app.full_dispatch_request(), req)
+        self.send_response(response.status_code)
+        for key, value in response.headers.items():
+            self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(response.get_data())
