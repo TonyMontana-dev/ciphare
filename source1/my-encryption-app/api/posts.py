@@ -1,53 +1,39 @@
 """
 This python file contains the API endpoints for posts. It allows users to create, retrieve, like, and comment on posts.
-The API endpoints are as follows:
-1. POST /api/posts - Create a new post
-2. GET /api/posts - Retrieve all posts
-3. POST /api/posts/<post_id>/like - Like a post
-4. POST /api/posts/<post_id>/comment - Add a comment to a post
-5. DELETE /api/posts/<post_id> - Delete a post
-6. DELETE /api/posts/<post_id>/comment/<comment_index> - Delete a comment from a post
-
-The API endpoints interact with a Redis database to store and retrieve post data. The Redis database is hosted on Upstash. 
-This file also contains helper functions to safely make requests to the Redis database to avoid SSRF vulnerabilities. 
-
+The API endpoints interact with a Redis database to store and retrieve post data. The Redis database is hosted on Upstash.
 """
 
-
-from flask import Flask, Blueprint, request, jsonify
-from datetime import datetime
+from http.server import BaseHTTPRequestHandler
+import logging
+from flask import Blueprint, request, jsonify
+from datetime import datetime, timedelta
 import json
 from api.utils import generate_id
 from urllib.parse import urljoin, urlparse
 from dotenv import load_dotenv
 import os
 import requests
-from http.server import BaseHTTPRequestHandler
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.wrappers import Request, Response
 
-posts_bp = Blueprint("posts", __name__, url_prefix="/api/posts")  # Create a Blueprint for posts API
+# Create a Blueprint for posts API
+posts_bp = Blueprint("posts", __name__, url_prefix="/api/posts")
 
-# Load environment variables from .env file
-load_dotenv() 
+# Load environment variables
+load_dotenv()
 
-# Retrieve UPSTASH_REDIS_URL
-UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")  
-UPSTASH_REDIS_TOKEN = os.getenv("UPSTASH_REDIS_PASSWORD")  
+# Redis configurations
+UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
+UPSTASH_REDIS_TOKEN = os.getenv("UPSTASH_REDIS_PASSWORD")
 HEADERS = {"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"}
 
-# Initialize Flask app
-app = Flask(__name__)
-
-# Safe request helper function to avoid SSRF vulnerabilities
-# Helper function for safe Redis requests
+# Safe request helper function
+# Safe request helper function
 def safe_request(method, endpoint_path, headers=None, data=None):
     base_url = UPSTASH_REDIS_URL
     full_url = urljoin(base_url, endpoint_path)
     parsed_url = urlparse(full_url)
 
-    # Allowed paths to avoid SSRF vulnerabilities
-    allowed_paths = ["/hset/", "/hget/", "/hincrby/", "/del/", "/smembers/", "/expire/", "/keys/", "/hgetall/", "/pipeline"]
+    # Allowed paths for Redis operations
+    allowed_paths = ["/hset/", "/hget/", "/hincrby/", "/del/", "/keys/", "/hgetall/", "/pipeline", "/ttl/"]  # Added /ttl/
     if not any(parsed_url.path.startswith(path) for path in allowed_paths):
         raise ValueError(f"Security Exception: Unsafe URL path detected: {parsed_url.path}")
 
@@ -63,45 +49,54 @@ def safe_request(method, endpoint_path, headers=None, data=None):
     else:
         raise ValueError(f"Unsupported HTTP method: {method}")
 
+
+# Route to handle posts (create and retrieve)
 @posts_bp.route("", methods=["POST", "GET"])
 def handle_posts():
-    # Check if the request method is POST to create a new post or GET to retrieve all posts
     if request.method == "POST":
-        # Logic for creating a new post
+        # Create a new post
         data = request.json
         title = data.get("title", "").strip()
         content = data.get("content", "").strip()
         author = data.get("author", "Anonymous").strip()
-        ttl = int(data.get("ttl", 90 * 24 * 60 * 60))  # Default to 3 months in seconds
+        ttl = int(data.get("ttl", 90 * 24 * 60 * 60))  # Default to 90 days in seconds
 
         post_id = generate_id()
         key = f"post:{post_id}"
+        created_at = datetime.utcnow()
         post_data = {
             "title": title,
             "content": content,
             "author": author,
+            "author_id": generate_id(),
             "likes": 0,
-            "created_at": datetime.utcnow().isoformat(),
-            "comments": []
+            "created_at": created_at.isoformat(),
+            "comments": json.dumps([]),  # Initialize with empty comments
         }
 
+        # Redis pipeline for atomic operations
         redis_pipeline = [
             ["hset", key, "title", title],
             ["hset", key, "content", content],
             ["hset", key, "author", author],
+            ["hset", key, "author_id", post_data["author_id"]],
             ["hset", key, "likes", 0],
             ["hset", key, "created_at", post_data["created_at"]],
-            ["hset", key, "comments", json.dumps([])],
+            ["hset", key, "comments", post_data["comments"]],
             ["expire", key, ttl]
         ]
 
         response = safe_request("post", "/pipeline", headers=HEADERS, data=redis_pipeline)
         if response.status_code == 200:
-            return jsonify({"message": "Post created successfully", "post_id": post_id}), 201
+            return jsonify({
+                "message": "Post created successfully",
+                "post_id": post_id,
+                "expires_in_days": ttl // (24 * 3600)
+            }), 201
         return jsonify({"error": "Failed to create post"}), 500
 
     elif request.method == "GET":
-        # Logic for retrieving all posts
+        # Retrieve all posts
         response = safe_request("get", "/keys/post:*", headers=HEADERS)
         if response.status_code != 200:
             return jsonify({"error": "Failed to retrieve posts"}), 500
@@ -117,11 +112,22 @@ def handle_posts():
                 post_data["_id"] = key.split(":")[1]
                 post_data["likes"] = int(post_data.get("likes", 0))
                 post_data["comments"] = json.loads(post_data.get("comments", "[]"))
+                if "created_at" in post_data:
+                    post_data["created_at"] = datetime.fromisoformat(post_data["created_at"]).strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    post_data["created_at"] = "Unknown"
+
+
+                # Calculate expiration
+                ttl_response = safe_request("get", f"/ttl/{key}", headers=HEADERS)
+                if ttl_response.status_code == 200:
+                    ttl_seconds = ttl_response.json().get("result", 0)
+                    post_data["expires_in"] = max(ttl_seconds // (24 * 3600), 0)  # Convert TTL to days
                 posts.append(post_data)
 
         return jsonify(sorted(posts, key=lambda x: x["likes"], reverse=True)), 200
 
-
+# Route to like a post
 @posts_bp.route("/<post_id>/like", methods=["POST"])
 def like_post(post_id):
     key = f"post:{post_id}"
@@ -130,6 +136,39 @@ def like_post(post_id):
         return jsonify({"message": "Post liked successfully"}), 200
     return jsonify({"error": "Failed to like post"}), 500
 
+# Route to delete a post
+@posts_bp.route("/<post_id>", methods=["DELETE"])
+def delete_post(post_id):
+    key = f"post:{post_id}"  # Define the key for Redis
+    logging.debug(f"Attempting to delete Redis key: {key}")
+    
+    # Verify if the post exists before attempting to delete
+    response = safe_request("get", f"/keys/{key}", headers=HEADERS)
+    if response.status_code != 200 or not response.json().get("result", []):
+        logging.error(f"Post not found or already deleted: {key}")
+        return jsonify({"error": "Post not found or already deleted"}), 404
+    
+    # Proceed with deletion
+    response = safe_request("post", f"/del/{key}", headers=HEADERS)  # Delete the post from Redis
+    if response.status_code == 200:
+        logging.debug(f"Post deleted successfully: {key}")
+        return jsonify({"message": "Post deleted successfully"}), 200
+    else:
+        logging.error(f"Failed to delete post. Redis Error: {response.status_code}, {response.text}")
+        return jsonify({"error": "Failed to delete post"}), 500
+
+# Route to retrieve comments for a post
+@posts_bp.route("/<post_id>/comments", methods=["GET"])
+def get_comments(post_id):
+    key = f"post:{post_id}"
+    response = safe_request("get", f"/hget/{key}/comments", headers=HEADERS)
+
+    if response.status_code == 200:
+        comments = json.loads(response.json().get("result", "[]"))
+        return jsonify(comments), 200
+
+    return jsonify({"error": "Failed to retrieve comments"}), 500
+
 # Route to add a comment to a post
 @posts_bp.route("/<post_id>/comment", methods=["POST"])
 def add_comment(post_id):
@@ -137,7 +176,6 @@ def add_comment(post_id):
         data = request.json
         content = data.get("content", "").strip()
         author = data.get("author", "Anonymous").strip()
-        ttl = data.get("ttl", 90 * 24 * 60 * 60)  # Default to 90 days in seconds
 
         if not content or not author:
             return jsonify({"error": "Author and content are required"}), 400
@@ -148,104 +186,64 @@ def add_comment(post_id):
         if response.status_code != 200:
             return jsonify({"error": "Failed to retrieve comments"}), 500
 
-        # Ensure comments are parsed as a list
-        existing_comments = response.json().get("result", "[]")
-        try:
-            comments = json.loads(existing_comments)
-            if not isinstance(comments, list):
-                raise ValueError("Comments is not a list")
-        except Exception:
-            comments = []  # Reset to an empty list if parsing fails
+        comments = json.loads(response.json().get("result", "[]"))
+        if not isinstance(comments, list):
+            comments = []
 
-        # Generate a unique ID for the comment's author
-        author_id = generate_id()
-
-        # Add the new comment
         new_comment = {
             "content": content,
             "author": author,
-            "author_id": author_id,
+            "author_id": generate_id(),
             "timestamp": datetime.utcnow().isoformat(),
-            "ttl": ttl,
         }
         comments.append(new_comment)
 
-        # Update comments in Redis
         response = safe_request(
-            "post", f"/hset/{key}/comments", headers=HEADERS, data={"comments": json.dumps(comments)}
+            "post",
+            f"/hset/{key}/comments",
+            headers=HEADERS,
+            data={"comments": json.dumps(comments)},
         )
 
         if response.status_code != 200:
             return jsonify({"error": "Failed to add comment"}), 500
 
-        # Fetch the updated post data
-        post_response = safe_request("get", f"/hgetall/{key}", headers=HEADERS)
-        if post_response.status_code != 200:
-            return jsonify({"error": "Failed to retrieve updated post"}), 500
-
-        raw_post_data = post_response.json().get("result", [])
-        post_data = dict(zip(raw_post_data[::2], raw_post_data[1::2]))
-        post_data["_id"] = key.split(":")[1]
-        post_data["likes"] = int(post_data.get("likes", 0))
-        post_data["comments"] = json.loads(post_data.get("comments", "[]"))
-        post_data["created_at"] = post_data.get("created_at", "")
-
-        return jsonify(post_data), 200  # Return the updated post
+        return jsonify({"message": "Comment added successfully", "comments": comments}), 200
 
     except Exception as e:
+        logging.error(f"Error in add_comment: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-
-# Route to delete a post
-@posts_bp.route("/<post_id>", methods=["DELETE"])
-def delete_post(post_id):
-    key = f"post:{post_id}"  # Define the key for Redis
-    response = safe_request("post", f"/del/{key}", headers=HEADERS)  # Delete the post from Redis
-    
-    if response and response.status_code == 200:
-        return jsonify({"message": "Post deleted successfully"}), 200
-    else:
-        print(f"Failed to delete post. Redis Error: {response.status_code}, {response.text}")
-        return jsonify({"error": "Failed to delete post"}), 500
-    
 # Route to delete a comment from a post
-@posts_bp.route("/<post_id>/comment/<int:comment_index>", methods=["DELETE"])
-def delete_comment(post_id, comment_index):
-    try:
-        key = f"post:{post_id}"  # Define the key for Redis
+@posts_bp.route("/<post_id>/comment/<comment_id>", methods=["DELETE"])
+def delete_comment(post_id, comment_id):
+    key = f"post:{post_id}"
+    response = safe_request("get", f"/hget/{key}/comments", headers=HEADERS)
 
-        # Retrieve the existing comments
-        response = safe_request("get", f"/hget/{key}/comments", headers=HEADERS)  # Get the comments from Redis hash field
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to retrieve comments"}), 500
 
-        if response.status_code != 200:
-            print(f"Failed to retrieve comments. Redis Error: {response.status_code}, {response.text}")
-            return jsonify({"error": "Failed to retrieve comments"}), 500
+    comments = json.loads(response.json().get("result", "[]"))
+    if not isinstance(comments, list):
+        comments = []
 
-        # Parse comments and remove the specified comment
-        comments = json.loads(response.json().get("result", "[]"))
-        if 0 <= comment_index < len(comments):
-            deleted_comment = comments.pop(comment_index)
-            print(f"Deleted comment: {deleted_comment}")
+    for comment in comments:
+        if comment.get("author_id") == comment_id:
+            comments.remove(comment)
+            break
 
-            # Update the comments in Redis
-            response = safe_request(
-                "post",
-                f"/hset/{key}/comments",
-                headers=HEADERS,
-                data={"comments": json.dumps(comments)}
-            )
+    response = safe_request(
+        "post",
+        f"/hset/{key}/comments",
+        headers=HEADERS,
+        data={"comments": json.dumps(comments)},
+    )
 
-            if response.status_code == 200:
-                return jsonify({"message": "Comment deleted successfully"}), 200
-            else:
-                print(f"Failed to delete comment. Redis Error: {response.status_code}, {response.text}")
-                return jsonify({"error": "Failed to delete comment"}), 500
-        else:
-            return jsonify({"error": "Comment index out of range"}), 404
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to delete comment"}), 500
 
-    except Exception as e:
-        print(f"Error in deleting comment: {e}")
-        return jsonify({"error": "An error occurred while deleting the comment"}), 500
+    return jsonify({"message": "Comment deleted successfully", "comments": comments}), 200
+
     
 # Define a handler for Vercel
 class handler(BaseHTTPRequestHandler):

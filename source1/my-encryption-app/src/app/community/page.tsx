@@ -219,9 +219,9 @@ export default function Community() {
                 {post.comments.length > 0 ? (
                   <>
                     {post.comments.slice(0, visibleComments[post._id] || 2).map((comment, idx) => (
-                      <div key={idx} className="text-xs text-zinc-400">
+                      <div key={`${post._id}-${comment.author_id}`} className="text-xs text-zinc-400">
                         {comment.author}#{comment.author_id}: {comment.content} (Expires in{" "}
-                        {Math.round(comment.ttl / (24 * 60 * 60))} days)
+                        {Math.round((comment.ttl || 0) / (24 * 60 * 60))} days)
                         <button
                           onClick={() => handleDeleteComment(post._id, idx)}
                           className="text-red-500 ml-2"
@@ -246,7 +246,10 @@ export default function Community() {
                   type="text"
                   placeholder="Add a comment"
                   className="w-full p-2 mt-2 bg-zinc-900 border border-zinc-700 rounded text-zinc-300"
-                  onKeyDown={(e) => e.key === "Enter" && handleAddComment(post._id, e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddComment(post._id, e.currentTarget.value);
+                      e.currentTarget.value = "";}}} // Clear the input after submission
                 />
               </div>
             </div>
