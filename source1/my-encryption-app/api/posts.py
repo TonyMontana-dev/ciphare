@@ -65,12 +65,14 @@ def safe_request(method, endpoint_path, headers=None, data=None):
 
 @posts_bp.route("", methods=["POST", "GET"])
 def handle_posts():
+    # Check if the request method is POST to create a new post or GET to retrieve all posts
     if request.method == "POST":
+        # Logic for creating a new post
         data = request.json
         title = data.get("title", "").strip()
         content = data.get("content", "").strip()
         author = data.get("author", "Anonymous").strip()
-        ttl = int(data.get("ttl", 90 * 24 * 60 * 60))
+        ttl = int(data.get("ttl", 90 * 24 * 60 * 60))  # Default to 3 months in seconds
 
         post_id = generate_id()
         key = f"post:{post_id}"
@@ -80,7 +82,7 @@ def handle_posts():
             "author": author,
             "likes": 0,
             "created_at": datetime.utcnow().isoformat(),
-            "comments": json.dumps([])
+            "comments": []
         }
 
         redis_pipeline = [
@@ -89,7 +91,7 @@ def handle_posts():
             ["hset", key, "author", author],
             ["hset", key, "likes", 0],
             ["hset", key, "created_at", post_data["created_at"]],
-            ["hset", key, "comments", post_data["comments"]],
+            ["hset", key, "comments", json.dumps([])],
             ["expire", key, ttl]
         ]
 
@@ -99,6 +101,7 @@ def handle_posts():
         return jsonify({"error": "Failed to create post"}), 500
 
     elif request.method == "GET":
+        # Logic for retrieving all posts
         response = safe_request("get", "/keys/post:*", headers=HEADERS)
         if response.status_code != 200:
             return jsonify({"error": "Failed to retrieve posts"}), 500
@@ -117,6 +120,7 @@ def handle_posts():
                 posts.append(post_data)
 
         return jsonify(sorted(posts, key=lambda x: x["likes"], reverse=True)), 200
+
 
 @posts_bp.route("/<post_id>/like", methods=["POST"])
 def like_post(post_id):
