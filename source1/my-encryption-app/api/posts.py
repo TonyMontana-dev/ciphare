@@ -5,7 +5,7 @@ The API endpoints interact with a Redis database to store and retrieve post data
 
 from http.server import BaseHTTPRequestHandler
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, Request, Response, app, request, jsonify
 from datetime import datetime, timedelta
 import json
 from api.utils import generate_id
@@ -255,6 +255,61 @@ class handler(BaseHTTPRequestHandler):
             "CONTENT_LENGTH": self.headers.get('Content-Length'),
             "CONTENT_TYPE": self.headers.get('Content-Type'),
         }
+
+    def do_GET(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+
+    def do_DELETE(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+
+    def do_PUT(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+
+    def do_PATCH(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+
+    def do_HEAD(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+
+    def do_OPTIONS(self):
+        env = {
+            "REQUEST_METHOD": self.command,
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get('Content-Length'),
+            "CONTENT_TYPE": self.headers.get('Content-Type'),
+        }
+        
         body = self.rfile.read(int(env['CONTENT_LENGTH']) if env['CONTENT_LENGTH'] else 0)
         req = Request.from_values(
             path=self.path,
