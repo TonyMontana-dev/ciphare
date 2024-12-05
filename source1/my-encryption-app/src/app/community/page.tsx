@@ -40,8 +40,10 @@ export default function Community() {
       const response = await fetch(`${API_BASE_URL}/api/posts`);
       if (!response.ok) throw new Error("Failed to fetch posts.");
       const result = await response.json();
+      console.log("Fetched Posts:", result); // Debugging: check the API response
       setPosts(result);
     } catch {
+      console.error("Error fetching posts:", error); // Log any errors
       setError("Failed to load posts.");
     }
   }, [API_BASE_URL]);
