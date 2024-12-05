@@ -246,9 +246,6 @@ def delete_comment(post_id, comment_id):
 
 
 # A class to handle HTTP requests in a Vercel-compatible manner
-from api.app import app  # Import your Flask app instance
-
-
 class handler(BaseHTTPRequestHandler):
     def handle_request(self):
         try:
