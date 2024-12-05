@@ -247,62 +247,58 @@ def delete_comment(post_id, comment_id):
 
 # A class to handle HTTP requests in a Vercel-compatible manner
 class handler(BaseHTTPRequestHandler):
-    def handle_request(self):
-        try:
-            # Build the environment for the request
-            env = {
-                "REQUEST_METHOD": self.command,
-                "PATH_INFO": self.path,
-                "SERVER_PROTOCOL": self.request_version,
-                "CONTENT_LENGTH": self.headers.get('Content-Length'),
-                "CONTENT_TYPE": self.headers.get('Content-Type'),
-            }
-            
-            # Read the request body if it exists
-            body = self.rfile.read(int(env["CONTENT_LENGTH"]) if env["CONTENT_LENGTH"] else 0)
-            
-            # Create a Werkzeug request object
-            req = Request.from_values(
-                path=self.path,
-                environ=env,
-                input_stream=body,
-            )
-            
-            # Let Flask handle the request
-            response = Response.force_type(app.full_dispatch_request(), req)
-            
-            # Send the response
-            self.send_response(response.status_code)
-            for key, value in response.headers.items():
-                self.send_header(key, value)
-            self.end_headers()
-            self.wfile.write(response.get_data())
-        except Exception as e:
-            logging.error(f"Error handling request: {e}")
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(b"Internal Server Error")
+    def do_GET(self):
+        """Handle GET requests."""
+        # Prepare the environment for the Flask app
+        env = {
+            "REQUEST_METHOD": "GET",
+            "PATH_INFO": self.path,
+            "SERVER_PROTOCOL": self.request_version,
+            "CONTENT_LENGTH": self.headers.get("Content-Length", "0"),
+            "CONTENT_TYPE": self.headers.get("Content-Type"),
+        }
+        body = self.rfile.read(int(env["CONTENT_LENGTH"])) if env["CONTENT_LENGTH"] else None
 
-    # Map HTTP methods to `handle_request` to prevent recursion
-    def do_GET(self): self.handle_request()
-    def do_POST(self): self.handle_request()
-    def do_PUT(self): self.handle_request()
-    def do_PATCH(self): self.handle_request()
-    def do_DELETE(self): self.handle_request()
-    def do_OPTIONS(self): self.handle_request()
+        # Create a Flask Request object
+        req = Request.from_values(
+            path=env["PATH_INFO"],
+            environ=env,
+            input_stream=body,
+        )
 
-    # Logging helpers for debugging
+        # Route the request through Flask's WSGI app
+        response = Response.force_type(app.full_dispatch_request(), req)
+
+        # Respond to the client
+        self.send_response(response.status_code)
+        for key, value in response.headers.items():
+            self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(response.get_data())
+
+    def do_POST(self):
+        """Handle POST requests."""
+        self.do_GET()
+
+    def do_DELETE(self):
+        """Handle DELETE requests."""
+        self.do_GET()
+
+    def do_PUT(self):
+        """Handle PUT requests."""
+        self.do_GET()
+
+    def do_PATCH(self):
+        """Handle PATCH requests."""
+        self.do_GET()
+
     def log_message(self, format, *args):
-        logging.debug("%s - - [%s] %s\n" % 
-                      (self.address_string(), 
-                       self.log_date_time_string(), 
-                       format % args))
-
-    def log_error(self, format, *args):
-        logging.error("%s - - [%s] %s\n" % 
-                      (self.address_string(), 
-                       self.log_date_time_string(), 
-                       format % args))
+        """Log handler activity."""
+        logging.debug(
+            "%s - - [%s] %s\n"
+            % (self.address_string(), self.log_date_time_string(), format % args)
+        )
 
     def log_date_time_string(self):
-        return datetime.now().isoformat()
+        """Generate timestamp for logging."""
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
