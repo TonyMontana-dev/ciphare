@@ -26,17 +26,18 @@ flask_app.register_blueprint(posts_bp, url_prefix="/api/posts")
 def health_check():
     return {"status": "running"}, 200
 
-# Wrap the Flask app with BaseHTTPRequestHandler for Vercel compatibility
-from werkzeug.serving import run_simple
+# Handler for Vercel compatibility
 from werkzeug.wrappers import Request, Response
 from http.server import BaseHTTPRequestHandler
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/html')
+        response = flask_app.full_dispatch_request()
+        self.send_response(response.status_code)
+        for key, value in response.headers.items():
+            self.send_header(key, value)
         self.end_headers()
-        self.wfile.write(b'Flask app is running')
+        self.wfile.write(response.get_data())
 
     def do_POST(self):
         env = {
@@ -62,4 +63,4 @@ class handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     # Run Flask app locally
     port = int(os.environ.get("PORT", 5000))
-    run_simple("127.0.0.1", port, flask_app)
+    flask_app.run(host="127.0.0.1", port=port)
