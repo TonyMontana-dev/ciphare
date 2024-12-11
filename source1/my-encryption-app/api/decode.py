@@ -30,7 +30,7 @@ def is_valid_base64(s: str) -> bool:
 
 def add_padding(base64_string):
     """Ensure Base64 string has proper padding."""
-    return base64_string + "=" * (-len(base64_string) % 4)
+    return base64_string.rstrip("=").ljust(len(base64_string) + (-len(base64_string) % 4), "=")
 
 @decode_bp.route("", methods=["POST"])
 def decode():
@@ -59,6 +59,9 @@ def decode():
         raw_result = response.json()["result"]
         metadata = {}
 
+        # Log raw result for debugging
+        logging.debug(f"Raw result from Redis: {raw_result}")
+
         # Process metadata
         for i in range(0, len(raw_result), 2):
             k, v = raw_result[i], raw_result[i + 1]
@@ -67,12 +70,36 @@ def decode():
             elif k in ["ttl", "reads"]:
                 metadata[k] = int(v)  # Parse as integers
             else:
-                if not is_valid_base64(v):
-                    logging.error(f"Invalid Base64 string for key {k}: {v}")
+                # Validate and decode Base64
+                try:
+                    padded_value = add_padding(v)
+                    decoded_value = base64.b64decode(padded_value)
+                    metadata[k] = decoded_value
+                except Exception as e:
+                    logging.error(f"Invalid Base64 string for key {k}: {v} - {str(e)}")
                     return jsonify({"error": f"Invalid Base64 string for key {k}"}), 400
-                metadata[k] = base64.b64decode(add_padding(v))
 
+        # Log metadata for debugging
+        logging.debug(f"Processed metadata: {metadata}")
+
+        # Check for missing salt
+        if "salt" not in metadata:
+            logging.error("Salt is missing from metadata")
+            return jsonify({"error": "Salt is missing"}), 400
+
+        # Extract and validate encrypted data
         encrypted_data = metadata.pop("encrypted_data")
+        try:
+            if isinstance(metadata["tag"], bytes):
+                tag = metadata["tag"]
+            else:
+                tag = base64.b64decode(add_padding(metadata["tag"]))
+            if len(tag) != 16:
+                raise ValueError("Authentication tag must be 16 bytes")
+            metadata["tag"] = tag
+        except Exception as e:
+            logging.error(f"Invalid authentication tag: {str(e)}")
+            return jsonify({"error": "Invalid authentication tag"}), 400
 
         # Validate algorithm
         algorithm = EncryptionRegistry.get(algorithm_name)

@@ -35,7 +35,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <h2 className="py-4 text-3xl font-bold text-center text-zinc-300 ">Trusted by a growing community</h2>
+      <h2 className="py-4 text-3xl font-bold text-center text-zinc-300 ">Follow us to get updates when new version of Ciphare are available.</h2>
     </div>
   );
 }

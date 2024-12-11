@@ -1,5 +1,4 @@
 from flask import Flask, Blueprint, request, jsonify
-from flask_cors import CORS
 from api.registry import EncryptionRegistry
 from api.utils import generate_id
 import base64
@@ -20,7 +19,6 @@ HEADERS = {"Authorization": f"Bearer {UPSTASH_REDIS_PASSWORD}"}
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for the app
 
 @encode_bp.route("", methods=["POST"])
 def encode():
@@ -45,22 +43,49 @@ def encode():
             return jsonify({"error": "Unsupported encryption algorithm"}), 400
 
         # Encrypt file data
-        encrypted_data, metadata = algorithm.encrypt(file_data, password)
+        encrypted_data, encryption_metadata = algorithm.encrypt(file_data, password)
+
+        # Validate and enforce TTL bounds
+        ttl_seconds = data.get("ttl", 60)  # Default to 60 seconds if not provided
+
+        # Debug received TTL for accuracy
+        logging.debug(f"Received TTL in seconds: {ttl_seconds}")
+
+        if ttl_seconds < 60:
+            ttl_seconds = 60  # Minimum TTL is 1 minute
+        elif ttl_seconds > 90 * 86400:
+            ttl_seconds = 90 * 86400  # Maximum TTL is 90 days
+
+        # Log the validated TTL
+        logging.debug(f"Final validated TTL (in seconds): {ttl_seconds}")
 
         # Add metadata for Redis
-        metadata.update({
-            "encrypted_data": base64.b64encode(encrypted_data).decode(),
-            "reads": int(data.get("reads", 1)),
-            "ttl": int(data.get("ttl", 86400)),
-            "file_name": data.get("file_name", "unknown"),
-            "file_type": data.get("file_type", "application/octet-stream"),
-        })
+        metadata = {
+            "encrypted_data": base64.b64encode(encrypted_data).decode("utf-8"),
+            "tag": base64.b64encode(encryption_metadata["tag"]).decode("utf-8"),
+            "reads": str(data.get("reads", 1)),  # Store as string
+            "ttl": ttl_seconds,  # Store as integer
+            "file_name": str(data.get("file_name", "unknown")),
+            "file_type": str(data.get("file_type", "application/octet-stream")),
+            "iv": base64.b64encode(encryption_metadata["iv"]).decode("utf-8"),
+            "salt": base64.b64encode(encryption_metadata["salt"]).decode("utf-8"),
+        }
+
+        # Log metadata for debugging
+        logging.debug(f"Metadata for Redis: {metadata}")
 
         # Generate unique file ID and prepare Redis commands
         file_id = generate_id()
         key = f"cipher_share:{file_id}"
-        redis_pipeline = [[f"hset", key, k, v] for k, v in metadata.items()]
-        redis_pipeline.append(["expire", key, metadata["ttl"]])
+        redis_pipeline = []
+        for k, v in metadata.items():
+            redis_pipeline.append(["hset", key, k, str(v) if k != "ttl" else v])  # Convert all but TTL to string
+        # Debug the TTL being sent to Redis
+        logging.debug(f"Setting TTL for key {key}: {ttl_seconds} seconds")
+        redis_pipeline.append(["expire", key, ttl_seconds])  # TTL as integer for Redis
+
+        # Log Redis pipeline for debugging
+        logging.debug(f"Redis pipeline: {redis_pipeline}")
 
         # Store encrypted data in Redis
         response = requests.post(f"{UPSTASH_REDIS_URL}/pipeline", headers=HEADERS, json=redis_pipeline)

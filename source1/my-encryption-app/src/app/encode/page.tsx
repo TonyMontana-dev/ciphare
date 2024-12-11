@@ -57,8 +57,14 @@ export default function Encode() {
         reader.readAsArrayBuffer(file); // Read the file as an ArrayBuffer
       });
 
-      // Send the Base64-encoded file data, along with name and type, to the backend
-      console.log("Payload:", {
+      // Debug TTL values
+      console.log("TTL Debugging:", {
+        ttl,
+        ttlMultiplier,
+        calculatedTTL: ttl * ttlMultiplier,
+      });
+
+      console.log("Payload being sent to backend:", {
         file_data: fileData,
         file_name: file.name,
         file_type: file.type,
