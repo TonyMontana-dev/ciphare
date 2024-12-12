@@ -12,7 +12,11 @@ The following is a restricted list of dependencies that are crucial to this proj
 - Tailwind CSS: Utility-first CSS framework for styling the front end.
 
 The following are the instructions on how to run this project or your local environment: 
-Clone the repository: git clone https://github.com/TonyMontana-dev/ciphare.git 
+
+Clone the repository: 
+git clone https://github.com/TonyMontana-dev/ciphare.git 
+
+Move into the directory:
 cd ciphare 
 
 Install backend dependencies: pip install -r requirements.txt 
