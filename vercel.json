@@ -9,5 +9,21 @@
     "NEXT_PUBLIC_API_BASE_URL": "https://ciphare.vercel.app",
     "MONGODB_URI": "@mongodb-uri",
     "JWT_SECRET": "@jwt-secret"
-  }
+  },
+  "functions": {
+    "api/*.py": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
 } 
