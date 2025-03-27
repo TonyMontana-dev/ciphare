@@ -1,10 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "cd source1/my-encryption-app && npm install && npm run build",
-  "devCommand": "cd source1/my-encryption-app && npm run dev",
-  "installCommand": "cd source1/my-encryption-app && npm install",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "https://ciphare.vercel.app",
+    "MONGODB_URI": "@mongodb-uri",
+    "JWT_SECRET": "@jwt-secret"
+  },
   "functions": {
     "api/*.py": {
       "memory": 1024,
@@ -21,4 +26,4 @@
       "dest": "/$1"
     }
   ]
-} 
+}
