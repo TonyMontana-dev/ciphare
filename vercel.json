@@ -5,11 +5,6 @@
   "installCommand": "cd source1/my-encryption-app && npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_API_BASE_URL": "https://ciphare.vercel.app",
-    "MONGODB_URI": "@mongodb-uri",
-    "JWT_SECRET": "@jwt-secret"
-  },
   "functions": {
     "api/*.py": {
       "memory": 1024,
