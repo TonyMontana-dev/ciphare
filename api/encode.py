@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler
 # Flask Blueprint for encoding
 encode_bp = Blueprint("encode", __name__, url_prefix="/api/encode")
 
-# Initialize Flask app
+# Initialize Flask app - Backend Server
 app = Flask(__name__)
 
 @encode_bp.route("", methods=["POST", "OPTIONS"])
