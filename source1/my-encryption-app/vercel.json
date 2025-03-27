@@ -1,5 +1,15 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "https://api.ciphare.com",
+    "MONGODB_URI": "@mongodb-uri",
+    "JWT_SECRET": "@jwt-secret"
+  },
   "routes": [
     { "src": "/api/encode", "dest": "api/encode.py" },
     { "src": "/api/decode", "dest": "api/decode.py" },

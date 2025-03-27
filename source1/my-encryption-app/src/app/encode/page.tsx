@@ -14,7 +14,7 @@ export default function Encode() {
   const [loading, setLoading] = useState(false);  // Initialize loading as false
   const [error, setError] = useState<string | null>(null);  // Initialize error as null
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"; // Default to local server URL if not provided in environment variables
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5328"; // Updated default to match backend port
 
   // Helper function to convert ArrayBuffer to Base64 string
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
@@ -49,12 +49,56 @@ export default function Encode() {
     setShareLink(null);
 
     try {
+      // Log the API URL being used
+      console.log("Attempting to connect to:", API_BASE_URL);
+      console.log("Environment variables:", {
+        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+        NEXT_PUBLIC_DOMAIN: process.env.NEXT_PUBLIC_DOMAIN
+      });
+
+      // Test the connection first
+      try {
+        console.log("Testing backend connection...");
+        const testResponse = await fetch(`${API_BASE_URL}/api/test`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!testResponse.ok) {
+          const errorData = await testResponse.json().catch(() => ({}));
+          console.error("Backend server test failed:", {
+            status: testResponse.status,
+            statusText: testResponse.statusText,
+            errorData
+          });
+          throw new Error(`Backend server test failed with status: ${testResponse.status}`);
+        }
+        
+        const testData = await testResponse.json();
+        console.log("Backend server test successful:", testData);
+      } catch (testError) {
+        console.error("Backend server test failed:", {
+          error: testError,
+          message: testError instanceof Error ? testError.message : "Unknown error",
+          stack: testError instanceof Error ? testError.stack : undefined
+        });
+        
+        if (testError instanceof TypeError && testError.message === "Failed to fetch") {
+          throw new Error("Unable to connect to the backend server. Please make sure it's running on port 5328. Error: " + testError.message);
+        } else {
+          throw testError;
+        }
+      }
+
       // Convert the file to a Base64 string using FileReader API
       const fileData = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(arrayBufferToBase64(reader.result as ArrayBuffer)); // Efficient Base64 conversion
+        reader.onload = () => resolve(arrayBufferToBase64(reader.result as ArrayBuffer));
         reader.onerror = reject;
-        reader.readAsArrayBuffer(file); // Read the file as an ArrayBuffer
+        reader.readAsArrayBuffer(file);
       });
 
       // Debug TTL values
@@ -65,37 +109,59 @@ export default function Encode() {
       });
 
       console.log("Payload being sent to backend:", {
-        file_data: fileData,
+        file_data: fileData.substring(0, 100) + "...", // Log only first 100 chars of file data
         file_name: file.name,
         file_type: file.type,
-        password,
+        password: password ? "***" : "",
         reads,
         ttl: ttl * ttlMultiplier,
         algorithm,
       });
 
-      const response = await fetch(`${API_BASE_URL}/api/encode/`, {
+      const response = await fetch(`${API_BASE_URL}/api/encode`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           file_data: fileData,
-          file_name: file.name, // Original file name
-          file_type: file.type, // Original file type
-          password, // Encryption password
-          reads, // Number of reads
-          ttl: ttl * ttlMultiplier, // Convert TTL to seconds
-          algorithm, // Selected algorithm
+          file_name: file.name,
+          file_type: file.type,
+          password,
+          reads,
+          ttl: ttl * ttlMultiplier,
+          algorithm,
         }),
       });
 
-      if (!response.ok) throw new Error("Encryption failed. Please try again.");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Server response error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        throw new Error(errorData.error || `Encryption failed with status: ${response.status}`);
+      }
 
       const result = await response.json();
-      const domain = "https://ciphare.vercel.app"; // Adjust this to your deployment domain
-      setShareLink(`${domain}/decode/${result.file_id}`); // Set the shareable link for decryption
+      console.log("Encryption successful:", { file_id: result.file_id });
+      
+      const domain = process.env.NEXT_PUBLIC_DOMAIN || "https://ciphare.vercel.app";
+      setShareLink(`${domain}/decode/${result.file_id}`);
     } catch (e) {
-      console.error("Error during encryption:", e);
-      setError((e as Error).message);
+      console.error("Error during encryption:", {
+        error: e,
+        message: e instanceof Error ? e.message : "Unknown error",
+        stack: e instanceof Error ? e.stack : undefined
+      });
+      
+      if (e instanceof TypeError && e.message === "Failed to fetch") {
+        setError("Unable to connect to the server. Please make sure the backend server is running on port 5328. Error: " + e.message);
+      } else {
+        setError(e instanceof Error ? e.message : "An unexpected error occurred");
+      }
     } finally {
       setLoading(false);
     }

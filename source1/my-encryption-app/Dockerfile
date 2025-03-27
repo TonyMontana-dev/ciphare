@@ -1,45 +1,36 @@
-# syntax = docker/dockerfile:1
+# Build stage
+FROM node:18-alpine AS builder
 
-# Adjust NODE_VERSION as desired
-ARG NODE_VERSION=20.18.0
-FROM node:${NODE_VERSION}-slim as base
-
-LABEL fly_launch_runtime="Next.js"
-
-# Next.js app lives here
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV="production"
+# Copy package files
+COPY package*.json ./
 
+# Install dependencies
+RUN npm ci
 
-# Throw-away build stage to reduce size of final image
-FROM base as build
-
-# Install packages needed to build node modules
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
-
-# Install node modules
-COPY package-lock.json package.json ./
-RUN npm ci --include=dev
-
-# Copy application code
+# Copy source code
 COPY . .
 
-# Build application
+# Build the application
 RUN npm run build
 
-# Remove development dependencies
-RUN npm prune --omit=dev
+# Production stage
+FROM node:18-alpine AS runner
 
+WORKDIR /app
 
-# Final stage for app image
-FROM base
+# Set to production
+ENV NODE_ENV=production
 
-# Copy built application
-COPY --from=build /app /app
+# Copy necessary files from builder
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Start the server by default, this can be overwritten at runtime
+# Expose the port
 EXPOSE 3000
-CMD [ "npm", "run", "start" ]
+
+# Start the application
+CMD ["node", "server.js"]

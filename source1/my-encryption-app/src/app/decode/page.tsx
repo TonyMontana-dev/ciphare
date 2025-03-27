@@ -11,7 +11,7 @@ export default function Decode() {
   const [loading, setLoading] = useState(false); // Loading state
   const [error, setError] = useState<string | null>(null); // Error state
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"; // Default API base URL
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5328"; // Default API base URL
 
   // Handle the decryption process
   const handleDecrypt = async () => {
@@ -25,28 +25,28 @@ export default function Decode() {
     setDecryptedFile(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/decode/`, {
+      const response = await fetch(`${API_BASE_URL}/api/decode/${fileID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          file_id: fileID,
           password,
           algorithm,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Decryption failed. Please check your file ID, password, and algorithm.");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Decryption failed. Please check your file ID, password, and algorithm.");
       }
 
       const result = await response.json();
 
-      if (!result.decrypted_data || !result.file_name || !result.file_type) {
+      if (!result.file_data || !result.file_name || !result.file_type) {
         throw new Error("Incomplete data received from the server.");
       }
 
       setDecryptedFile({
-        data: result.decrypted_data,
+        data: result.file_data,
         name: result.file_name,
         type: result.file_type,
       });

@@ -1,9 +1,11 @@
 from flask import Flask, Blueprint, request, jsonify
 from api.registry import EncryptionRegistry
+from api.mongodb_client import mongodb_client
+from api.storage_service import storage_service
 import base64
-import requests
 import os
 import logging
+from datetime import datetime
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.wrappers import Request, Response
 from http.server import BaseHTTPRequestHandler
@@ -11,124 +13,80 @@ from http.server import BaseHTTPRequestHandler
 # Flask Blueprint for decoding
 decode_bp = Blueprint("decode", __name__, url_prefix="/api/decode")
 
-# Load Redis configurations
-UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
-UPSTASH_REDIS_PASSWORD = os.getenv("UPSTASH_REDIS_PASSWORD")
-HEADERS = {"Authorization": f"Bearer {UPSTASH_REDIS_PASSWORD}"}
-
 # Initialize Flask app
 app = Flask(__name__)
 
-# Helper functions
-def is_valid_base64(s: str) -> bool:
-    """Check if a string is valid Base64."""
-    try:
-        base64.b64decode(s, validate=True)
-        return True
-    except Exception:
-        return False
+@decode_bp.route("", methods=["OPTIONS"])
+@decode_bp.route("/", methods=["OPTIONS"])
+def handle_options():
+    # Handle preflight request
+    response = jsonify({"message": "OK"})
+    response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+    response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+    return response
 
-def add_padding(base64_string):
-    """Ensure Base64 string has proper padding."""
-    return base64_string.rstrip("=").ljust(len(base64_string) + (-len(base64_string) % 4), "=")
+@decode_bp.route("/<file_id>", methods=["POST", "OPTIONS"])
+def decode(file_id):
+    if request.method == "OPTIONS":
+        # Handle preflight request
+        response = jsonify({"message": "OK"})
+        response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response
 
-@decode_bp.route("", methods=["POST"])
-def decode():
     try:
         # Parse request data
         data = request.json
-        logging.debug(f"Request received for decoding: {data}")
-
-        # Extract decryption details
-        file_id = data.get("file_id")
         password = data.get("password")
-        algorithm_name = data.get("algorithm", "AES256")
 
-        # Validate inputs
-        if not file_id or not password:
-            return jsonify({"error": "File ID and password are required"}), 400
-
-        # Fetch metadata from Redis
-        key = f"cipher_share:{file_id}"
-        response = requests.get(f"{UPSTASH_REDIS_URL}/hgetall/{key}", headers=HEADERS)
-        logging.debug(f"Redis response for key {key}: {response.text}")
-
-        if response.status_code != 200 or not response.json().get("result"):
+        # Get file metadata from MongoDB
+        metadata = mongodb_client.get_file_metadata(file_id)
+        if not metadata:
             return jsonify({"error": "File not found or expired"}), 404
 
-        raw_result = response.json()["result"]
-        metadata = {}
+        # Check if file has expired
+        if datetime.utcnow() > metadata["expires_at"]:
+            return jsonify({"error": "File has expired"}), 410
 
-        # Log raw result for debugging
-        logging.debug(f"Raw result from Redis: {raw_result}")
+        # Check if max reads reached
+        if metadata["reads"] <= 0:
+            return jsonify({"error": "Maximum reads reached"}), 403
 
-        # Process metadata
-        for i in range(0, len(raw_result), 2):
-            k, v = raw_result[i], raw_result[i + 1]
-            if k in ["file_name", "file_type"]:
-                metadata[k] = v  # Skip decoding for plain strings
-            elif k in ["ttl", "reads"]:
-                metadata[k] = int(v)  # Parse as integers
-            else:
-                # Validate and decode Base64
-                try:
-                    padded_value = add_padding(v)
-                    decoded_value = base64.b64decode(padded_value)
-                    metadata[k] = decoded_value
-                except Exception as e:
-                    logging.error(f"Invalid Base64 string for key {k}: {v} - {str(e)}")
-                    return jsonify({"error": f"Invalid Base64 string for key {k}"}), 400
+        # Get encryption algorithm
+        algorithm = EncryptionRegistry.get(metadata["algorithm"])
+        if algorithm is None:
+            return jsonify({"error": "Unsupported encryption algorithm"}), 400
 
-        # Log metadata for debugging
-        logging.debug(f"Processed metadata: {metadata}")
-
-        # Check for missing salt
-        if "salt" not in metadata:
-            logging.error("Salt is missing from metadata")
-            return jsonify({"error": "Salt is missing"}), 400
-
-        # Extract and validate encrypted data
-        encrypted_data = metadata.pop("encrypted_data")
+        # Decrypt the data
         try:
-            if isinstance(metadata["tag"], bytes):
-                tag = metadata["tag"]
-            else:
-                tag = base64.b64decode(add_padding(metadata["tag"]))
-            if len(tag) != 16:
-                raise ValueError("Authentication tag must be 16 bytes")
-            metadata["tag"] = tag
+            encrypted_data = base64.b64decode(metadata["encrypted_data"])
+            decrypted_data = algorithm.decrypt(
+                encrypted_data,
+                password,
+                {
+                    "iv": base64.b64decode(metadata["iv"]),
+                    "tag": base64.b64decode(metadata["tag"]),
+                    "salt": base64.b64decode(metadata["salt"])
+                }
+            )
         except Exception as e:
-            logging.error(f"Invalid authentication tag: {str(e)}")
-            return jsonify({"error": "Invalid authentication tag"}), 400
+            logging.error(f"Decryption error: {str(e)}")
+            return jsonify({"error": "Invalid password or corrupted data"}), 400
 
-        # Validate algorithm
-        algorithm = EncryptionRegistry.get(algorithm_name)
-        if not algorithm:
-            return jsonify({"error": f"Algorithm {algorithm_name} not supported"}), 400
+        # Update read count
+        if not mongodb_client.update_file_reads(file_id):
+            logging.error("Failed to update read count")
 
-        # Decrypt file data
-        decrypted_data = algorithm.decrypt(encrypted_data, password, metadata)
-
-        # Update `reads` or delete if exhausted
-        remaining_reads = metadata["reads"] - 1
-        if remaining_reads > 0:
-            requests.post(
-                f"{UPSTASH_REDIS_URL}/hincrby/{key}/reads/-1",
-                headers=HEADERS
-            )
-        else:
-            requests.post(
-                f"{UPSTASH_REDIS_URL}/del/{key}",
-                headers=HEADERS
-            )
-
-        # Return decrypted file data and metadata
+        # Return decrypted data
         return jsonify({
-            "decrypted_data": base64.b64encode(decrypted_data).decode(),
-            "file_name": metadata.get("file_name", "unknown"),
-            "file_type": metadata.get("file_type", "application/octet-stream"),
-            "remaining_reads": remaining_reads
-        })
+            "file_data": base64.b64encode(decrypted_data).decode("utf-8"),
+            "file_name": metadata["file_name"],
+            "file_type": metadata["file_type"],
+            "remaining_reads": metadata["reads"] - 1
+        }), 200
+
     except Exception as e:
         logging.error(f"Error during decoding: {str(e)}")
         return jsonify({"error": str(e)}), 500
