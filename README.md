@@ -1,6 +1,39 @@
 ## THIS PROJECT IS PAUSED, AND WILL BE REDEVELOPED FOR BEST PRACTICES. NOTE THAT THERE ARE DEBUGGING STATEMENTS PRESENTED IN THE CODE. NOT FOR PRODUCTION.
+# Ciphare - Secure File Encryption
+
+A secure file encryption and sharing platform built with Next.js and Python.
+
+## Features
+
+- File encryption and decryption
+- Secure file sharing
+- Community features
+- Time-limited access
+- Read count limits
+
+## Development
+
+To run the project locally:
+
+```bash
+# Install dependencies
+npm install
+pip install -r requirements.txt
+
+# Run development servers
+npm run dev
+```
+
+## Production Deployment
+
+The project is deployed on Vercel with both frontend and backend running concurrently.
+
+## License
+
+MIT
+
 # Ciphare - A web application 
-With loads of files exchanged every day, data privacy and secure file sharing have become crucial in today’s world. As technology evolves, there’s an increasing need for people and organizations to share sensitive information without risking data breaches or unauthorized access. This Capstone project aims to meet this need by providing a secure, web-based platform that allows users to encrypt and decrypt various file types including documents, photos, and audio files using the military-grade AES-256 encryption algorithm. Launching this project will offer a reliable, user-friendly solution for sharing files temporarily, with added security features like expiration times, limits on decryption, shareable features (such as a link to share), and multiple selections of algorithms. I was inspired by services like EnvShare, Hat.sh, Cyberchef, and OnionShare which emphasize private, temporary file storage, focus on security and encryption, and various tools/methods related to cryptography and cybersecurity. However, this project will be an exhaustive tentative attempt to differentiate by integrating new functionalities, such as the encryption/decryption of any file type, implementing a web interface, and a community space where users can exchange ideas, questions, and more.
+With loads of files exchanged every day, data privacy and secure file sharing have become crucial in today's world. As technology evolves, there's an increasing need for people and organizations to share sensitive information without risking data breaches or unauthorized access. This Capstone project aims to meet this need by providing a secure, web-based platform that allows users to encrypt and decrypt various file types including documents, photos, and audio files using the military-grade AES-256 encryption algorithm. Launching this project will offer a reliable, user-friendly solution for sharing files temporarily, with added security features like expiration times, limits on decryption, shareable features (such as a link to share), and multiple selections of algorithms. I was inspired by services like EnvShare, Hat.sh, Cyberchef, and OnionShare which emphasize private, temporary file storage, focus on security and encryption, and various tools/methods related to cryptography and cybersecurity. However, this project will be an exhaustive tentative attempt to differentiate by integrating new functionalities, such as the encryption/decryption of any file type, implementing a web interface, and a community space where users can exchange ideas, questions, and more.
 
 Furthermore, this project intends to be more versatile by offering users a choice of multiple encryption algorithms, making it adaptable to a wider variety of security needs. This project aims to support the larger cybersecurity and privacy community by providing a dependable secure, temporary file sharing tool. It serves anyone needing a secure method for transferring files, including journalists, legal professionals, and NGOs operating in high-risk settings where secure information transmission is essential. By offering temporary file storage and self-destructing download links, this platform minimizes the long-term exposure of sensitive data, giving users better control over their information. Ultimately, this project empowers individuals and organizations to communicate securely, with peace of mind that their data is protected by advanced encryption standards.
 
