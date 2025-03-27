@@ -5,7 +5,15 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'ciphare.vercel.app'],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+    ]
   },
   async headers() {
     return [
@@ -35,6 +43,18 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()'
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: 'https://ciphare.vercel.app'
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS'
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'X-Requested-With, Content-Type, Authorization'
           }
         ]
       }
