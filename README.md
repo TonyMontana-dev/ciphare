@@ -1,46 +1,305 @@
-# Ciphare - A web application 
-With loads of files exchanged every day, data privacy and secure file sharing have become crucial in today’s world. As technology evolves, there’s an increasing need for people and organizations to share sensitive information without risking data breaches or unauthorized access. This Capstone project aims to meet this need by providing a secure, web-based platform that allows users to encrypt and decrypt various file types including documents, photos, and audio files using the military-grade AES-256 encryption algorithm. Launching this project will offer a reliable, user-friendly solution for sharing files temporarily, with added security features like expiration times, limits on decryption, shareable features (such as a link to share), and multiple selections of algorithms. I was inspired by services like EnvShare, Hat.sh, Cyberchef, and OnionShare which emphasize private, temporary file storage, focus on security and encryption, and various tools/methods related to cryptography and cybersecurity. However, this project will be an exhaustive tentative attempt to differentiate by integrating new functionalities, such as the encryption/decryption of any file type, implementing a web interface, and a community space where users can exchange ideas, questions, and more. Furthermore, this project intends to be more versatile by offering users a choice of multiple encryption algorithms, making it adaptable to a wider variety of security needs. This project aims to support the larger cybersecurity and privacy community by providing a dependable secure, temporary file sharing tool. It serves anyone needing a secure method for transferring files, including journalists, legal professionals, and NGOs operating in high-risk Andrea Marcelli 1Andrea Marcelli CPSC 49200 003 December 11th, 2024 Project Manual settings where secure information transmission is essential. By offering temporary file storage and self-destructing download links, this platform minimizes the long-term exposure of sensitive data, giving users better control over their information. Ultimately, this project empowers individuals and organizations to communicate securely, with peace of mind that their data is protected by advanced encryption standards. Through this research and development, I hope to contribute a valuable tool to the cybersecurity community and lay a solid foundation for future work in secure digital communication. It also encompasses possible further implementation to expand this project including community-focused features related to privacy and security, a mobile application, the addition of various cybersecurity tools, and more.
+# Ciphare - Secure File Encryption & Sharing Platform
 
-# Installation step-by-step
-The following is a restricted list of dependencies that are crucial to this project: 
-- Flask: Backend framework for API development.
-- Next.js: Frontend framework for building user interfaces.
-- TypeScript: Ensures type safety in the frontend code.
-- Redis: Used for storing encrypted files and managing TTL and READS.
-- Upstash Redis: Cloud-based Redis solution for scalability.
-- Cryptography: Python library for implementing encryption algorithms.
-- Tailwind CSS: Utility-first CSS framework for styling the front end.
+A secure web application for encrypting files and sharing them with time-limited, access-controlled links. Built with Next.js, Flask, MongoDB, and Cloudflare R2.
 
-The following are the instructions on how to run this project or your local environment: 
+## Features
 
-Clone the repository: 
-git clone https://github.com/TonyMontana-dev/ciphare.git 
+- **File Encryption**: Encrypt any file using AES-256 encryption
+- **Time-Limited Storage**: Files are automatically deleted after a specified TTL (1 minute to 90 days)
+- **Access Control**: Limit the number of times a file can be decrypted
+- **Secure Sharing**: Generate unique, shareable links for encrypted files
+- **Password Protection**: Files are encrypted with user-provided passwords
+- **Community Posts**: Optional community feature for sharing encrypted posts
 
-Move into the directory:
-cd ciphare 
+## Tech Stack
 
-Install backend dependencies: pip install -r requirements.txt 
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
+- **Backend**: Flask (Python), serverless-wsgi
+- **Database**: MongoDB Atlas (metadata) + Cloudflare R2 (file storage)
+- **Encryption**: AES-256-GCM via Python cryptography library
+- **Deployment**: Vercel, Railway, or Netlify
 
-Install frontend dependencies: npm install 
+## Prerequisites
 
-Set up environment variables: 
-- UPSTASH_REDIS_URL 
-- UPSTASH_REDIS_PASSWORD 
-- NEXT_PUBLIC_API_BASE_URL 
-- DOMAIN 
-- PORT 
+- Node.js 18+ and npm
+- Python 3.8+
+- MongoDB Atlas account (free M0 tier)
+- Cloudflare R2 account (free tier with 10GB storage)
+- Deployment platform account (Vercel, Railway, or Netlify)
 
-Start the backend: flask run or python (or python3 based on your python version) FLASK INDEX/APP.PY MAIN FILE PATH 
-Start the frontend: npm run dev 
+## Quick Start
 
-# Features
-- The features included in this project are but not limited to the following: 
-- Store temporarily encrypted files 
-- Store with a TTL(time to live) the encrypted files. 
-- Store with a TAR (total amount of Reads). Therefore the file can be read/decrypted only X times 
-- Use AES-256 encryption algorithm and multiple other algorithms 
-- Input files of any type (PDF, JPEG, PNG, MP4, etc…) 
-- Download the files aside from only sharing 
-- Provide a sharable link for the encrypted data 
-- Anonymous Community Posting 
-- Modern User Interface
+For detailed setup instructions, see [SETUP_GUIDE.md](./SETUP_GUIDE.md)
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repo-url>
+cd ciphare
+```
+
+### 2. Install dependencies
+
+```bash
+# Install Node.js dependencies
+npm install
+
+# Install Python dependencies
+pip install -r requirements.txt
+```
+
+### 3. Configure environment variables
+
+Create a `.env` file in the root directory:
+
+```env
+# MongoDB Atlas Configuration
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+
+# Cloudflare R2 Configuration
+R2_ACCOUNT_ID=your-account-id
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
+R2_BUCKET_NAME=your-bucket-name
+
+# Application Domain (for generating shareable links)
+DOMAIN=http://localhost:3000
+
+# CORS Origins (comma-separated, or * for all)
+CORS_ORIGINS=*
+
+# Flask Debug Mode
+FLASK_DEBUG=True
+
+# Next.js Public API Base URL (for local development)
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+### 4. Run the development servers
+
+```bash
+# Run both Next.js and Flask servers concurrently
+npm run dev
+```
+
+The application will be available at:
+- Frontend: http://localhost:3000
+- Flask API: http://localhost:5328
+
+## Production Deployment
+
+This application can be deployed on multiple platforms. **Railway is recommended** for the best experience with Flask.
+
+### 🚂 Railway (Recommended)
+
+Railway is the best choice for this full-stack application. It can run Flask as a full service, providing better performance.
+
+**Quick Start:**
+- See [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md) for detailed instructions
+- Create two services: Frontend (Next.js) and Backend (Flask)
+- Set environment variables and deploy!
+
+**Why Railway?**
+- ✅ Full Flask service (no serverless limitations)
+- ✅ Better performance (no cold starts)
+- ✅ Simpler setup
+- ✅ See [DEPLOYMENT_COMPARISON.md](./DEPLOYMENT_COMPARISON.md) for details
+
+### ☁️ Vercel
+
+Vercel is great for Next.js and supports Python serverless functions.
+
+**Quick Start:**
+- See [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) for detailed instructions
+- Configure environment variables in Vercel dashboard
+- Deploy!
+
+### 🌐 Netlify
+
+Netlify works but requires additional setup. See [NETLIFY_DEPLOYMENT.md](./NETLIFY_DEPLOYMENT.md) for instructions.
+
+### 📊 Platform Comparison
+
+See [DEPLOYMENT_COMPARISON.md](./DEPLOYMENT_COMPARISON.md) for a detailed comparison.
+
+---
+
+## Production Deployment on Vercel
+
+### 1. Prepare for deployment
+
+1. Ensure all environment variables are set in your Vercel project settings
+2. Make sure `vercel.json` is properly configured (already done)
+
+### 2. Deploy to Vercel
+
+```bash
+# Install Vercel CLI if not already installed
+npm i -g vercel
+
+# Deploy
+vercel
+
+# For production deployment
+vercel --prod
+```
+
+### 3. Configure Vercel Environment Variables
+
+In your Vercel project settings, add the following environment variables:
+
+- `MONGODB_URI`: Your MongoDB Atlas connection string
+- `R2_ACCOUNT_ID`: Your Cloudflare R2 account ID
+- `R2_ACCESS_KEY_ID`: Your Cloudflare R2 access key ID
+- `R2_SECRET_ACCESS_KEY`: Your Cloudflare R2 secret access key
+- `R2_BUCKET_NAME`: Your Cloudflare R2 bucket name
+- `DOMAIN`: Your Vercel deployment URL (e.g., `https://your-app.vercel.app`)
+- `CORS_ORIGINS`: Your production domain (or `*` for development)
+
+### 4. Important Notes for Vercel Deployment
+
+- Python serverless functions are automatically detected in the `api/` directory
+- The `vercel.json` file configures routing for both Next.js and Python functions
+- Each API endpoint (`/api/encode`, `/api/decode`, `/api/posts`) is a separate serverless function
+- Functions use `serverless-wsgi` to wrap the Flask application
+
+### 5. Storage Architecture
+
+The application uses a hybrid storage approach:
+
+- **MongoDB Atlas**: Stores file metadata (file_id, file_name, encryption keys, TTL, reads count)
+- **Cloudflare R2**: Stores encrypted file data (up to 500MB per file)
+
+**Why this architecture?**
+- MongoDB free tier (512MB) is sufficient for metadata (thousands of files)
+- R2 free tier (10GB) handles large encrypted files
+- Separation of concerns: fast metadata queries + scalable file storage
+- Cost-effective: Both services offer generous free tiers
+
+## Project Structure
+
+```
+ciphare/
+├── api/                    # Python Flask API
+│   ├── encode/            # Encryption endpoint (serverless function)
+│   │   └── index.py
+│   ├── decode/            # Decryption endpoint (serverless function)
+│   │   └── index.py
+│   ├── posts/             # Posts API endpoint (serverless function)
+│   │   └── index.py
+│   ├── encryption/        # Encryption algorithms
+│   │   ├── base.py
+│   │   └── aes256.py
+│   ├── app.py             # Main Flask application
+│   ├── encode.py          # Encode blueprint
+│   ├── decode.py          # Decode blueprint
+│   ├── posts.py           # Posts blueprint
+│   ├── registry.py        # Encryption algorithm registry
+│   ├── storage.py         # MongoDB + R2 storage handler
+│   └── utils.py           # Utility functions
+├── src/                   # Next.js frontend
+│   └── app/
+│       ├── encode/        # Encryption page
+│       ├── decode/        # Decryption page
+│       ├── community/     # Community posts page
+│       └── [compositeKey]/ # Dynamic route for file links
+├── vercel.json            # Vercel configuration
+├── next.config.ts         # Next.js configuration
+├── requirements.txt       # Python dependencies
+└── package.json          # Node.js dependencies
+```
+
+## Security Features
+
+- **AES-256-GCM Encryption**: Industry-standard authenticated encryption
+- **Password-based Key Derivation**: Uses Scrypt KDF for secure key derivation
+- **Input Validation**: All inputs are validated and sanitized
+- **Request Timeouts**: All external requests have timeouts to prevent hanging
+- **CORS Configuration**: Configurable CORS for production security
+- **File Size Limits**: Maximum 500MB file size
+- **TTL Enforcement**: Automatic file deletion after expiration
+- **Read Limits**: Files are deleted after reaching read limit
+
+## API Endpoints
+
+### POST `/api/encode`
+Encrypt a file and store it in MongoDB (metadata) and R2 (encrypted file).
+
+**Request Body:**
+```json
+{
+  "file_data": "base64_encoded_file",
+  "file_name": "example.txt",
+  "file_type": "text/plain",
+  "password": "user_password",
+  "reads": 1,
+  "ttl": 86400,
+  "algorithm": "AES256"
+}
+```
+
+**Response:**
+```json
+{
+  "file_id": "unique_file_id",
+  "share_link": "https://domain.com/decode/file_id"
+}
+```
+
+### POST `/api/decode`
+Decrypt a file using file ID and password.
+
+**Request Body:**
+```json
+{
+  "file_id": "unique_file_id",
+  "password": "user_password",
+  "algorithm": "AES256"
+}
+```
+
+**Response:**
+```json
+{
+  "decrypted_data": "base64_encoded_decrypted_file",
+  "file_name": "example.txt",
+  "file_type": "text/plain",
+  "remaining_reads": 0
+}
+```
+
+### GET `/api/posts`
+Retrieve all community posts.
+
+### POST `/api/posts`
+Create a new community post.
+
+## Troubleshooting
+
+### Vercel Deployment Issues
+
+1. **Python functions not working**: Ensure `serverless-wsgi` is in `requirements.txt`
+2. **Environment variables not loading**: Check Vercel project settings
+3. **CORS errors**: Verify `CORS_ORIGINS` environment variable
+4. **Database/storage connection errors**: Verify MongoDB and R2 environment variables are set correctly
+
+### Local Development Issues
+
+1. **Port conflicts**: Change ports in `package.json` scripts if needed
+2. **Python import errors**: Ensure you're in the correct directory and virtual environment
+3. **Database/storage connection**: Verify your MongoDB Atlas and Cloudflare R2 credentials
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+[Add your license here]
+
+## Support
+
+For issues and questions, please open an issue on GitHub.
