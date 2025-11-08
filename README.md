@@ -17,7 +17,7 @@ A secure web application for encrypting files and sharing them with time-limited
 - **Backend**: Flask (Python), serverless-wsgi
 - **Database**: MongoDB Atlas (metadata) + Cloudflare R2 (file storage)
 - **Encryption**: AES-256-GCM via Python cryptography library
-- **Deployment**: Vercel, Railway, or Netlify
+- **Deployment**: Render (recommended for free tier), Railway, Vercel, or Netlify
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ A secure web application for encrypting files and sharing them with time-limited
 - Python 3.8+
 - MongoDB Atlas account (free M0 tier)
 - Cloudflare R2 account (free tier with 10GB storage)
-- Deployment platform account (Vercel, Railway, or Netlify)
+- Deployment platform account (Render recommended for free tier, Railway, Vercel, or Netlify)
 
 ## Quick Start
 
@@ -88,11 +88,28 @@ The application will be available at:
 
 ## Production Deployment
 
-This application can be deployed on multiple platforms. **Railway is recommended** for the best experience with Flask.
+This application can be deployed on multiple platforms. **Render is recommended for free tier** (no credit card required), while **Railway is recommended** for paid deployments.
 
-### 🚂 Railway (Recommended)
+### 🎨 Render (Recommended for Free Tier)
 
-Railway is the best choice for this full-stack application. It can run Flask as a full service, providing better performance.
+Render is the **best FREE option** - no credit card required, generous free tier, and perfect for personal projects.
+
+**Quick Start:**
+- See [RENDER_QUICK_START.md](./RENDER_QUICK_START.md) for 5-minute setup
+- See [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md) for detailed instructions
+- Deploy as two services: Frontend (Static Site) and Backend (Web Service)
+
+**Why Render?**
+- ✅ **Completely Free** - No credit card required
+- ✅ Full Flask service (no serverless limitations)
+- ✅ No function limits (unlike Vercel's 12 function limit)
+- ✅ Auto-deploy from GitHub
+- ✅ Free SSL certificates
+- ⚠️ Spins down after 15 min inactivity (free tier)
+
+### 🚂 Railway (Recommended for Paid)
+
+Railway is the best choice for paid deployments. It can run Flask as a full service, providing better performance.
 
 **Quick Start:**
 - See [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md) for detailed instructions
@@ -102,6 +119,7 @@ Railway is the best choice for this full-stack application. It can run Flask as 
 **Why Railway?**
 - ✅ Full Flask service (no serverless limitations)
 - ✅ Better performance (no cold starts)
+- ✅ Always-on (paid tier)
 - ✅ Simpler setup
 - ✅ See [DEPLOYMENT_COMPARISON.md](./DEPLOYMENT_COMPARISON.md) for details
 
@@ -121,6 +139,11 @@ Netlify works but requires additional setup. See [NETLIFY_DEPLOYMENT.md](./NETLI
 ### 📊 Platform Comparison
 
 See [DEPLOYMENT_COMPARISON.md](./DEPLOYMENT_COMPARISON.md) for a detailed comparison.
+
+**Quick Recommendation:**
+- **Free Tier**: Use **Render** (no credit card, generous limits)
+- **Paid Tier**: Use **Railway** (always-on, better performance)
+- **Vercel**: Good for Next.js but has 12 function limit on free tier
 
 ---
 

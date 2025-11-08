@@ -1,0 +1,60 @@
+# Render Blueprint Configuration
+# This file allows you to deploy both services at once
+# Go to Render Dashboard → New → Blueprint → Connect this repo
+
+services:
+  # Backend Service (Flask API)
+  - type: web
+    name: ciphare-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 api.app:flask_app
+    envVars:
+      - key: MONGODB_URI
+        sync: false  # Set manually in Render dashboard
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: DOMAIN
+        sync: false  # Will be set after frontend is deployed
+      - key: CORS_ORIGINS
+        sync: false  # Will be set after frontend is deployed
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: UPSTASH_REDIS_URL
+        sync: false  # Optional
+      - key: UPSTASH_REDIS_PASSWORD
+        sync: false  # Optional
+
+  # Frontend Service (Next.js)
+  # Option 1: Static Site (Recommended - faster, cheaper)
+  - type: static
+    name: ciphare-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: .next
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        fromService:
+          type: web
+          name: ciphare-backend
+          property: url
+
+  # Option 2: Web Service (Alternative if Static Site doesn't work)
+  # Uncomment below and comment out the static site above if needed
+  # - type: web
+  #   name: ciphare-frontend
+  #   env: node
+  #   buildCommand: npm install && npm run build
+  #   startCommand: npm start
+  #   envVars:
+  #     - key: NEXT_PUBLIC_API_BASE_URL
+  #       fromService:
+  #         type: web
+  #         name: ciphare-backend
+  #         property: url
+
