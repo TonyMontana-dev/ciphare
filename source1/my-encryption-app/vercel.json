@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "routes": [
-    { "src": "/api/encode", "dest": "api/encode.py" },
-    { "src": "/api/decode", "dest": "api/decode.py" },
-    { "src": "/api/posts", "dest": "api/posts.py" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
-}
