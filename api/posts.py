@@ -42,7 +42,7 @@ def safe_request(method, endpoint_path, headers=None, data=None):
     parsed_url = urlparse(full_url)
 
     # Allowed paths for Redis operations
-    allowed_paths = ["/hset/", "/hget/", "/hincrby/", "/del/", "/keys/", "/hgetall/", "/pipeline", "/ttl/"]  # Added /ttl/
+    allowed_paths = ["/hset/", "/hget/", "/hincrby/", "/del/", "/keys/", "/hgetall/", "/pipeline", "/ttl/", "/expire/"]  # Added /expire/ for TTL preservation
     if not any(parsed_url.path.startswith(path) for path in allowed_paths):
         raise ValueError(f"Security Exception: Unsafe URL path detected: {parsed_url.path}")
 
@@ -175,8 +175,22 @@ def like_post(post_id):
     if not UPSTASH_REDIS_URL or not HEADERS:
         return jsonify({"error": "Community posts feature requires Redis configuration."}), 503
     key = f"post:{post_id}"
+    
+    # Get current TTL before liking to preserve expiration
+    ttl_response = safe_request("get", f"/ttl/{key}", headers=HEADERS)
+    current_ttl = -1
+    if ttl_response.status_code == 200:
+        current_ttl = ttl_response.json().get("result", -1)
+    
+    # Increment likes
     response = safe_request("post", f"/hincrby/{key}/likes/1", headers=HEADERS)
     if response.status_code == 200:
+        # Restore TTL if it was valid (preserve expiration time)
+        if current_ttl > 0:
+            # Use EXPIRE to restore the original TTL
+            expire_response = safe_request("post", f"/expire/{key}/{current_ttl}", headers=HEADERS)
+            if expire_response.status_code != 200:
+                logging.warning(f"Failed to restore TTL for post {post_id} after like")
         return jsonify({"message": "Post liked successfully"}), 200
     return jsonify({"error": "Failed to like post"}), 500
 
@@ -212,7 +226,17 @@ def get_comments(post_id):
     response = safe_request("get", f"/hget/{key}/comments", headers=HEADERS)
 
     if response.status_code == 200:
-        comments = json.loads(response.json().get("result", "[]"))
+        # Handle None result from Redis
+        result = response.json().get("result")
+        if result is None:
+            comments = []
+        else:
+            try:
+                comments = json.loads(result) if isinstance(result, str) else result
+            except (json.JSONDecodeError, TypeError):
+                comments = []
+        if not isinstance(comments, list):
+            comments = []
         return jsonify(comments), 200
 
     return jsonify({"error": "Failed to retrieve comments"}), 500
@@ -262,7 +286,16 @@ def add_comment(post_id):
         if response.status_code != 200:
             return jsonify({"error": "Failed to retrieve comments"}), 500
 
-        comments = json.loads(response.json().get("result", "[]"))
+        # Handle None result from Redis
+        result = response.json().get("result")
+        if result is None:
+            comments = []
+        else:
+            try:
+                comments = json.loads(result) if isinstance(result, str) else result
+            except (json.JSONDecodeError, TypeError):
+                comments = []
+        
         if not isinstance(comments, list):
             comments = []
 
@@ -314,7 +347,15 @@ def delete_comment(post_id, comment_id):
     if response.status_code != 200:
         return jsonify({"error": "Failed to retrieve comments"}), 500
 
-    comments = json.loads(response.json().get("result", "[]"))
+    # Handle None result from Redis
+    result = response.json().get("result")
+    if result is None:
+        comments = []
+    else:
+        try:
+            comments = json.loads(result) if isinstance(result, str) else result
+        except (json.JSONDecodeError, TypeError):
+            comments = []
     if not isinstance(comments, list):
         comments = []
 

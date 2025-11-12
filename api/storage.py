@@ -19,7 +19,39 @@ class Storage:
         if not mongodb_uri:
             raise ValueError("MONGODB_URI environment variable must be set")
         
-        self.mongo_client = MongoClient(mongodb_uri)
+        # Fix SSL/TLS issues for Python 3.13 compatibility
+        # MongoDB Atlas requires TLS, but Python 3.13 has stricter SSL requirements
+        # Use explicit connection parameters to handle TLS handshake errors
+        try:
+            self.mongo_client = MongoClient(
+                mongodb_uri,
+                tls=True,
+                tlsAllowInvalidCertificates=False,
+                serverSelectionTimeoutMS=60000,  # 60 seconds (increased for reliability)
+                connectTimeoutMS=60000,
+                socketTimeoutMS=60000,
+                retryWrites=True,
+                retryReads=True,
+                # Additional parameters for Python 3.13 compatibility
+                directConnection=False,  # Use replica set connection
+                maxPoolSize=10,
+                minPoolSize=1
+            )
+            # Test the connection immediately
+            self.mongo_client.admin.command('ping')
+            logger.info("MongoDB connection successful")
+        except Exception as e:
+            logger.error(f"MongoDB connection failed: {str(e)}")
+            # Try with a simpler configuration as fallback
+            logger.warning("Retrying MongoDB connection with simplified configuration...")
+            self.mongo_client = MongoClient(
+                mongodb_uri,
+                serverSelectionTimeoutMS=60000,
+                connectTimeoutMS=60000,
+                socketTimeoutMS=60000
+            )
+            self.mongo_client.admin.command('ping')
+            logger.info("MongoDB connection successful with fallback configuration")
         self.db = self.mongo_client['ciphare']
         self.files_collection = self.db['files']
         
